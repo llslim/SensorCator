@@ -13,8 +13,8 @@ android {
         applicationId = "com.tanujn45.a11y"
         minSdk = 31
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -77,6 +77,9 @@ dependencies {
 //    implementation("nz.ac.waikato.cms.weka:weka-stable:3.8.0") {
 //        exclude(group = "nz.ac.waikato.cms.weka.thirdparty", module = "java-cup-11b-runtime")
 //    }
+
+    implementation("com.google.mediapipe:tasks-vision:latest.release")
+
     val camerax_version = "1.4.0-alpha04"
     implementation("androidx.camera:camera-core:${camerax_version}")
     implementation("androidx.camera:camera-camera2:${camerax_version}")

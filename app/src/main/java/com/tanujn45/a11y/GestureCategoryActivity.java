@@ -13,6 +13,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 
 import com.tanujn45.a11y.CSVEditor.CSVFile;
 
@@ -20,8 +21,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-// Todo: Create a No op gesture which cannot be deleted and is there when user enters this screen
-public class GestureCategoryActivity extends AppCompatActivity {
+public class git add GestureCategoryActivity extends AppCompatActivity {
 
     private File directory;
     private CSVFile master;
@@ -40,7 +40,7 @@ public class GestureCategoryActivity extends AppCompatActivity {
         File masterFile = new File(directory, "master.csv");
         if (!masterFile.exists()) {
             try {
-                master = new CSVFile(new String[]{"Gesture Category Name", "Speakable Text", "Path", "Instance Count"}, masterFile.getAbsolutePath());
+                master = new CSVFile(new String[]{"Gesture Category Name", "Speakable Text", "Path", "Instance Count", "Ignore"}, masterFile.getAbsolutePath());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -68,7 +68,7 @@ public class GestureCategoryActivity extends AppCompatActivity {
         if (!gestureCategoryFolder.exists()) {
             gestureCategoryFolder.mkdirs();
         }
-        master.addRow(new String[]{"Rest", "", gestureCategoryFolder.getAbsolutePath(), "0"});
+        master.addRow(new String[]{"Rest", "", gestureCategoryFolder.getAbsolutePath(), "0", String.valueOf(true)});
         master.save();
     }
 
@@ -102,6 +102,7 @@ public class GestureCategoryActivity extends AppCompatActivity {
 
         EditText gestureCategoryNameEditText = dialogView.findViewById(R.id.gestureCategoryNameEditText);
         EditText speakableTextEditText = dialogView.findViewById(R.id.speakableTextEditText);
+        SwitchCompat ignoreGesture = dialogView.findViewById(R.id.ignoreGestureCategorySwitch);
         Button cancelButton = dialogView.findViewById(R.id.cancelButton);
         Button saveButton = dialogView.findViewById(R.id.saveButton);
 
@@ -126,7 +127,8 @@ public class GestureCategoryActivity extends AppCompatActivity {
                 if (!gestureCategoryFolder.exists()) {
                     gestureCategoryFolder.mkdirs();
                 }
-                master.addRow(new String[]{gestureCategoryName, speakableText, gestureCategoryFolder.getAbsolutePath(), "0"});
+                boolean toIgnore = ignoreGesture.isChecked();
+                master.addRow(new String[]{gestureCategoryName, speakableText, gestureCategoryFolder.getAbsolutePath(), "0", String.valueOf(toIgnore)});
                 master.save();
 
                 startInstanceIntent(gestureCategoryName, speakableText);

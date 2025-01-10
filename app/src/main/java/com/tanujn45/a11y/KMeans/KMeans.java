@@ -270,6 +270,10 @@ public class KMeans {
                     continue;
                 }
 
+                if (fileName.contains("handlandmarkerFile1234")) {
+                    continue;
+                }
+
                 if (file.isFile() && fileName.endsWith(".csv")) {
                     this.csvFiles.add(file);
                     tempCSVFileNames.add(fileName);
@@ -405,19 +409,19 @@ public class KMeans {
         return instance;
     }
 
-    public String performKMeans(double timestamp, double acc_x, double acc_y, double acc_z, double gyro_x, double gyro_y, double gyro_z) {
+    public KMeansObj performKMeans(double timestamp, double acc_x, double acc_y, double acc_z, double gyro_x, double gyro_y, double gyro_z) {
         DenseInstance instance = createInstance(timestamp, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z);
 
         this.sensorInstances.add(instance);
         if (this.sensorInstances.size() == 100) {
-            String result = this.performKMeans(this.sensorInstances);
+            KMeansObj result = this.performKMeans(this.sensorInstances);
             this.sensorInstances.clear();
             return result;
         }
         return null;
     }
 
-    private String performKMeans(Instances unknownData) {
+    private KMeansObj performKMeans(Instances unknownData) {
         try {
             double[] result = new double[this.csvFileNames.length];
             for (int i = 0; i < this.prefixes.length; i++) {
@@ -472,18 +476,86 @@ public class KMeans {
                 result[i] = Math.round(result[i] * 100.0) / 100.0;
             }
 
+            /*
+            int maxIndex = 0;
+            for (int i = 1; i < result.length; i++) {
+                System.out.print(result[i] + " ");
+                if (result[i] > result[maxIndex]) {
+                    maxIndex = i;
+                }
+            }
+            System.out.println();
+
+            if (result[maxIndex] < 0.25) {
+                return "Rest";
+            }
+
+            String resultFinal = this.csvFileNames[maxIndex];
+
+             */
+
             int maxIndex = 0;
             for (int i = 1; i < result.length; i++) {
                 if (result[i] > result[maxIndex]) {
                     maxIndex = i;
                 }
             }
-            String resultFinal = this.csvFileNames[maxIndex];
-            resultFinal = resultFinal.substring(0, resultFinal.length() - 4);
-            resultFinal = resultFinal.replace("_", " ");
-            resultFinal = resultFinal.replaceAll("[0-9]", "").trim();
-            resultFinal = resultFinal.substring(0, 1).toUpperCase() + resultFinal.substring(1);
-            return resultFinal;
+
+//            for (int i = 0; i < result.length; i++) {
+//                System.out.print(this.csvFileNames[i] + "(" + result[i] + ") ");
+//            }
+//
+//            System.out.println();
+
+            String resultFinal = csvFileNames[maxIndex];
+            double maxConfidence = result[maxIndex];
+
+            String bucketPrefix = resultFinal.substring(0, resultFinal.lastIndexOf('_'));
+
+            List<Double> bucketScores = new ArrayList<>();
+            for (int i = 0; i < csvFileNames.length; i++) {
+                if (csvFileNames[i].startsWith(bucketPrefix)) {
+                    bucketScores.add(result[i]);
+                }
+            }
+
+            double sum = 0;
+            for (double score : bucketScores) {
+                sum += score;
+            }
+            double averageConfidence = sum / bucketScores.size();
+
+            double varianceSum = 0;
+            for (double score : bucketScores) {
+                varianceSum += Math.pow(score - averageConfidence, 2);
+            }
+            double standardDeviation = Math.sqrt(varianceSum / bucketScores.size());
+
+            System.out.println("Bucket: " + bucketPrefix);
+            System.out.println("Max Confidence: " + maxConfidence);
+            System.out.println("Average Confidence: " + averageConfidence);
+            System.out.println("Standard Deviation: " + standardDeviation);
+
+            for (int i = 0; i < this.csvFileNames.length; i++) {
+                System.out.println(this.csvFileNames[i] + ": " + result[i]);
+            }
+
+            System.out.println("\n\n");
+
+            if (result[maxIndex] < 0.12 || averageConfidence < 0.12) {
+                resultFinal = "Rest";
+            } else {
+                resultFinal = resultFinal.substring(0, resultFinal.length() - 4);
+                resultFinal = resultFinal.replace("_", " ");
+                resultFinal = resultFinal.replaceAll("[0-9]", "").trim();
+                resultFinal = resultFinal.substring(0, 1).toUpperCase() + resultFinal.substring(1);
+            }
+
+            bucketPrefix = bucketPrefix.replace("_", " ");
+            bucketPrefix = bucketPrefix.replaceAll("[0-9]", "").trim();
+            bucketPrefix = bucketPrefix.substring(0, 1).toUpperCase() + bucketPrefix.substring(1);
+
+            return new KMeansObj(resultFinal, bucketPrefix, maxConfidence, averageConfidence, standardDeviation);
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
             throw new RuntimeException(e);

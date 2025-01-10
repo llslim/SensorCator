@@ -82,7 +82,7 @@ public class RecordActivity extends AppCompatActivity {
 
         // Get the connected serial
         String connectedSerial = getConnectedSerial();
-        if (connectedSerial == null) {
+        if (connectedSerial == null || BluetoothActivity.mMds == null) {
             Toast.makeText(this, "No device connected", Toast.LENGTH_SHORT).show();
 //            Intent intent = new Intent(RecordActivity.this, MainActivity.class);
 //            startActivity(intent);

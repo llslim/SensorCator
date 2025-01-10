@@ -3,11 +3,13 @@ package com.tanujn45.a11y;
 import android.os.Bundle;
 import android.os.Environment;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,40 +24,110 @@ import com.movesense.mds.MdsNotificationListener;
 import com.movesense.mds.MdsSubscription;
 import com.tanujn45.a11y.CSVEditor.CSVFile;
 import com.tanujn45.a11y.KMeans.KMeans;
+import com.tanujn45.a11y.KMeans.KMeansObj;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 
 //Todo: Fix and optimize AAC activity
 public class AccessibleActivity extends AppCompatActivity implements CardAdapter.OnItemClickListener, AccItem.OnItemRemovedListener {
-    ArrayList<AccItem> accItems = new ArrayList<>();
-    LinearLayout scrollableLayout;
+    private ArrayList<AccItem> accItems = new ArrayList<>();
     private TextToSpeech textToSpeech;
     public static final String URI_EVENTLISTENER = "suunto://MDS/EventListener";
     private static final String PATH = "/Meas/IMU6/";
     private static final String RATE = "52";
     private MdsSubscription mdsSubscription;
     private String connectedSerial;
-    Spinner modelSpinner;
+    private LinearLayout scrollableLayout;
+    private Spinner modelSpinner;
     private List<CardData> cardDataList;
-    RecyclerView recyclerView;
-    SwitchCompat toggleRecognition;
+    private RecyclerView recyclerView;
+    private SwitchCompat toggleRecognition;
+    Spinner voiceSpinner;
+    TextView logText;
     KMeans kMeans;
     CSVFile masterFile;
     boolean noModels = false;
+    private List<Voice> voiceList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_accessible);
 
+        voiceSpinner = findViewById(R.id.voiceSpinner);
+        logText = findViewById(R.id.logText);
         textToSpeech = new TextToSpeech(this, status -> {
-            if (status != TextToSpeech.ERROR) {
-                textToSpeech.setLanguage(Locale.US);
+            if (status == TextToSpeech.SUCCESS) {
+                // Fetch available voices
+                textToSpeech.setLanguage(Locale.ENGLISH);
+                Set<Voice> voices = textToSpeech.getVoices();
+                if (voices != null) {
+                    voiceList.clear();
+                    for (Voice voice : voices) {
+                        if (voice.getLocale().getLanguage().startsWith("en")) {
+                            voiceList.add(voice); // Add only English voices
+                        }
+                    }
+
+                    // Populate spinner with voice names
+                    /* List<String> voiceNames = new ArrayList<>();
+                    for (Voice voice : voiceList) {
+                        voiceNames.add(voice.getName());
+                    } */
+
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(AccessibleActivity.this, android.R.layout.simple_spinner_item, Arrays.asList("Male", "Female"));
+
+                    adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    voiceSpinner.setAdapter(adapter);
+
+                    String maleVoice = "en-us-x-iol-local";
+                    String femaleVoice = "en-US-language";
+
+                    // Set listener for spinner selection
+                    voiceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                        @Override
+                        public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                            boolean found = false;
+                            String selectedVoice = parent.getItemAtPosition(position).toString();
+                            if (selectedVoice == "Male") {
+                                for (Voice voice : voiceList) {
+                                    if (voice.getName().equals(maleVoice)) {
+                                        textToSpeech.setVoice(voice);
+                                        Toast.makeText(AccessibleActivity.this, "Male voice selected", Toast.LENGTH_SHORT).show();
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                for (Voice voice : voiceList) {
+                                    if (voice.getName().equals(femaleVoice)) {
+                                        textToSpeech.setVoice(voice);
+                                        Toast.makeText(AccessibleActivity.this, "Female voice selected", Toast.LENGTH_SHORT).show();
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!found) {
+                                Toast.makeText(AccessibleActivity.this, "Device doesn't support this voice. Switching to default", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onNothingSelected(AdapterView<?> parent) {
+                            // Do nothing
+                        }
+                    });
+                }
+            } else {
+                Toast.makeText(AccessibleActivity.this, "TTS initialization failed!", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -67,6 +139,7 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
             return;
         }
         try {
+            // todo This cannot be done anymore because there is option to ignore
             masterFile = new CSVFile(master);
             int cnt = masterFile.getRowCount();
             if (cnt == 1) {
@@ -78,6 +151,19 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
                 Toast.makeText(this, "No active gestures found", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
+            } else {
+                int ignoreCount = 2;
+                List<String[]> csvData = masterFile.getCSVData();
+                for (String[] row : csvData) {
+                    if (!row[0].equals("Rest") && row[4].equals("true")) {
+                        ignoreCount++;
+                    }
+                }
+                if (ignoreCount == cnt) {
+                    Toast.makeText(this, "No active gesture found", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,6 +193,11 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
         toggleRecognition.setChecked(false);
         toggleRecognition.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
+                String connectedSerial = getConnectedSerial();
+                if (connectedSerial == null || BluetoothActivity.mMds == null) {
+                    Toast.makeText(this, "Connect to a bluetooth device", Toast.LENGTH_SHORT).show();
+                    toggleRecognition.setChecked(false);
+                }
                 if (noModels) {
                     Toast.makeText(this, "No models found", Toast.LENGTH_SHORT).show();
                     toggleRecognition.setChecked(false);
@@ -120,6 +211,7 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
             }
         });
     }
+
 
     private void initModelSpinner() {
         modelSpinner = findViewById(R.id.modelSpinner);
@@ -152,7 +244,9 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
                 unsubscribe();
                 String selectedModel = modelSpinner.getSelectedItem().toString();
                 kMeans.setModel(selectedModel);
-                subscribeToSensor(connectedSerial);
+                if (toggleRecognition.isChecked()) {
+                    subscribeToSensor(connectedSerial);
+                }
             }
 
             @Override
@@ -172,6 +266,9 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
             if (Objects.equals(row[0], "Rest")) {
                 continue;
             }
+            if (Objects.equals(row[4], "true")) {
+                continue;
+            }
             CardData cardData = new CardData();
             cardData.setName(row[0]);
             cardData.setTextToSpeak(row[1].replace("|", ","));
@@ -184,15 +281,16 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
     }
 
     private String getConnectedSerial() {
-        return getIntent().getStringExtra("serial");
+        if (MainActivity.connectedSerial == null) {
+            return BluetoothActivity.connectedSerial;
+        }
+        return MainActivity.connectedSerial;
     }
 
     private void subscribeToSensor(String connectedSerial) {
         if (mdsSubscription != null) {
             unsubscribe();
         }
-
-        connectedSerial = MainActivity.connectedSerial;
 
         String strContract = "{\"Uri\": \"" + connectedSerial + PATH + RATE + "\"}";
 
@@ -222,16 +320,21 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
                                     "  z: " +
                                     Math.round(arrAcc[i].getZ() * 100) / 100.0;
 
-                    String res = kMeans.performKMeans(timestamp, arrAcc[i].getX(), arrAcc[i].getY(), arrAcc[i].getZ(), arrGyro[i].getX(), arrGyro[i].getY(), arrGyro[i].getZ());
+                    KMeansObj res = kMeans.performKMeans(timestamp, arrAcc[i].getX(), arrAcc[i].getY(), arrAcc[i].getZ(), arrGyro[i].getX(), arrGyro[i].getY(), arrGyro[i].getZ());
                     if (res != null) {
-                        System.out.println(res);
+//                        System.out.println(res);
                     }
 
-                    // System.out.println(sensorMsgStr);
-
                     if (res != null) {
-                        addAccItem(res);
-                        System.out.println(sensorMsgStr + " " + res);
+                        String log = res.getBucket() + " Res: " + res.getRes() + " with probability " + res.getMaxConfidence();
+
+                        if (res.getRes().equals(res.getBucket())) {
+                            logText.setTextColor(getResources().getColor(R.color.green));
+                        } else {
+                            logText.setTextColor(getResources().getColor(R.color.red));
+                        }
+                        logText.setText(log);
+                        addAccItem(res.getRes(), res.getMaxConfidence());
                     }
                 }
             }
@@ -243,7 +346,7 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
         });
     }
 
-    private void addAccItem(String res) {
+    private void addAccItem(String res, double conf) {
         if (res.equals("Rest")) {
             return;
         }
@@ -251,13 +354,26 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
         accItem.setOnItemRemovedListener(this);
 
         accItem.setText1(res);
+        accItem.setText3(String.valueOf(conf));
+        boolean isPresent = false;
         for (int i = 0; i < cardDataList.size(); i++) {
-//            System.out.println(cardDataList.get(i).getName() + " test " + res);
             if (cardDataList.get(i).getName().toLowerCase().equals(res.toLowerCase())) {
                 accItem.setText2(cardDataList.get(i).getTextToSpeak());
                 textToSpeech.speak(cardDataList.get(i).getTextToSpeak(), TextToSpeech.QUEUE_FLUSH, null, null);
+                isPresent = true;
                 break;
             }
+        }
+
+        if (accItems.size() > 0) {
+            AccItem lastItem = accItems.get(accItems.size() - 1);
+            if (lastItem.getText1().equals(res)) {
+                return;
+            }
+        }
+
+        if (!isPresent) {
+            return;
         }
 
         scrollableLayout.addView(accItem);
@@ -337,5 +453,10 @@ public class AccessibleActivity extends AppCompatActivity implements CardAdapter
 
     public void backButtonClicked(View view) {
         finish();
+    }
+
+    public void clearButtonClicked(View view) {
+        scrollableLayout.removeAllViews();
+        accItems.clear();
     }
 }

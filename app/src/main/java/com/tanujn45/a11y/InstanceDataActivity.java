@@ -105,13 +105,20 @@ public class InstanceDataActivity extends AppCompatActivity {
         return file.delete();
     }
 
+
+    // Todo: HandlandmarkerFile1234 will be deleted here
     public void deleteInstance(View view) throws Exception {
         if (deleteFileOnPath(videoPath) && deleteFileOnPath(videoPath.replace(".mp4", ".csv"))) {
+
+            //  && deleteFileOnPath(videoPath.replace(".mp4", "_handlandmarkerFile1234.csv"))
             subMaster.deleteRowWithData(instanceName);
             subMaster.save();
 
-            Intent intent = new Intent(this, GestureCategoryActivity.class);
-            startActivity(intent);
+//            Intent intent = new Intent(this, GestureCategoryActivity.class);
+//            startActivity(intent);
+            Intent resultIntent = new Intent();
+            resultIntent.putExtra("refresh", "refresh");
+            setResult(RESULT_OK, resultIntent);
             finish();
         } else {
             throw new Exception("Failed to delete the instance");

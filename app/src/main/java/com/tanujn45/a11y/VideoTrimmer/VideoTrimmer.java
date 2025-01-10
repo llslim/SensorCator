@@ -30,6 +30,7 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.annotation.NonNull;
@@ -63,13 +64,12 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class VideoTrimmer extends FrameLayout {
-
     private static final String TAG = com.tanujn45.a11y.VideoTrimmer.VideoTrimmer.class.getSimpleName();
     private static final int MIN_TIME_FRAME = 1000;
     private static final int SHOW_PROGRESS = 2;
-
     private SeekBar mHolderTopView;
     private SeekBar mGraphHandler;
     private RangeSeekBarView mRangeSeekBarView;
@@ -98,7 +98,6 @@ public class VideoTrimmer extends FrameLayout {
 
     private OnTrimVideoListener mOnTrimVideoListener;
     private VideoListener mVideoListener;
-
     private int mDuration = 0;
     private int mTimeVideo = 0;
     private int mStartPosition = 0;
@@ -415,41 +414,48 @@ public class VideoTrimmer extends FrameLayout {
 
     private void onSaveClicked() throws Exception {
         if (mStartPosition <= 0 && mEndPosition >= mDuration) {
-            if (mOnTrimVideoListener != null)
-                mOnTrimVideoListener.getResult(mSrc, mStartPosition, mEndPosition);
-        } else {
-            mPlayView.setVisibility(View.VISIBLE);
-            mVideoView.pause();
+            mStartPosition = 0;
+            mEndPosition = mDuration;
+//            if (mOnTrimVideoListener != null)
+//                mOnTrimVideoListener.getResult(mSrc, mStartPosition, mEndPosition);
+        }
 
-            MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
-            mediaMetadataRetriever.setDataSource(getContext(), mSrc);
-            long METADATA_KEY_DURATION = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+//        else {
+        mPlayView.setVisibility(View.VISIBLE);
+        mVideoView.pause();
 
-            final File file = new File(mSrc.getPath());
+        MediaMetadataRetriever mediaMetadataRetriever = new MediaMetadataRetriever();
+        mediaMetadataRetriever.setDataSource(getContext(), mSrc);
+        long METADATA_KEY_DURATION = Long.parseLong(mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
 
-            if (mTimeVideo < MIN_TIME_FRAME) {
+        final File file = new File(Objects.requireNonNull(mSrc.getPath()));
 
-                if ((METADATA_KEY_DURATION - mEndPosition) > (MIN_TIME_FRAME - mTimeVideo)) {
-                    mEndPosition += (MIN_TIME_FRAME - mTimeVideo);
-                } else if (mStartPosition > (MIN_TIME_FRAME - mTimeVideo)) {
-                    mStartPosition -= (MIN_TIME_FRAME - mTimeVideo);
+        if (mTimeVideo < MIN_TIME_FRAME) {
+            if ((METADATA_KEY_DURATION - mEndPosition) > (MIN_TIME_FRAME - mTimeVideo)) {
+                mEndPosition += (MIN_TIME_FRAME - mTimeVideo);
+            } else if (mStartPosition > (MIN_TIME_FRAME - mTimeVideo)) {
+                mStartPosition -= (MIN_TIME_FRAME - mTimeVideo);
+            }
+        }
+
+        //notify that video trimming started
+        if (mOnTrimVideoListener != null) mOnTrimVideoListener.onTrimStarted();
+
+        BackgroundExecutor.execute(new BackgroundExecutor.Task("", 0L, "") {
+            @Override
+            public void execute() {
+                try {
+                    TrimVideoUtils.startTrim(file, getDestinationPath(), mStartPosition, mEndPosition, mOnTrimVideoListener);
+                } catch (final Throwable e) {
+                    // Use a Handler to show Toast on the main thread
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        String errorMessage = "Unable to trim video. File may be corrupt or too short.";
+                        Toast.makeText(getContext(), errorMessage, Toast.LENGTH_LONG).show();
+                    });
                 }
             }
-
-            //notify that video trimming started
-            if (mOnTrimVideoListener != null) mOnTrimVideoListener.onTrimStarted();
-
-            BackgroundExecutor.execute(new BackgroundExecutor.Task("", 0L, "") {
-                @Override
-                public void execute() {
-                    try {
-                        TrimVideoUtils.startTrim(file, getDestinationPath(), mStartPosition, mEndPosition, mOnTrimVideoListener);
-                    } catch (final Throwable e) {
-                        Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(), e);
-                    }
-                }
-            });
-        }
+        });
+//        }
     }
 
     public int getStartPosition() {

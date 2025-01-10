@@ -36,9 +36,6 @@ import com.polidea.rxandroidble2.RxBleClient;
 import com.polidea.rxandroidble2.RxBleDevice;
 import com.polidea.rxandroidble2.scan.ScanSettings;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -47,7 +44,6 @@ import io.reactivex.disposables.Disposable;
 
 public class BluetoothActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final String LOG_TAG = BluetoothActivity.class.getSimpleName();
-    private static final Logger log = LoggerFactory.getLogger(BluetoothActivity.class);
     public static Mds mMds;
     public static String connectedSerial;
     private static RxBleClient mBleClient;
@@ -207,7 +203,12 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
         // Check if the necessary permissions are granted before proceeding with Bluetooth operations
         if (mMds == null && hasBluetoothPermissions()) {
             // Initialize all Bluetooth features here
+            permissionsGranted = true;
             initMds();
+            initMScanResAdapter();
+            initPreviouslyConnectedAdapter();
+            loadPreviouslyConnectedDevices();
+            markConnectedDevices();
 
         } else {
             Log.d(LOG_TAG, "Bluetooth features already initialized, skipping reinitialization.");
@@ -225,7 +226,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
         if (context != null && permissions != null) {
             for (String permission : permissions) {
                 if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                     System.out.println("Permission not granted: " + permission);
+                    // System.out.println("Permission not granted: " + permission);
                     return false;
                 }
             }
@@ -341,7 +342,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
     private boolean hasBluetoothPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // For Android 12 (API level 31) and above
-            return  ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+            return ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         } else {
             // For Android versions below 12
             return ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_ADMIN) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
@@ -387,12 +388,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
      * Initialize the Mds object
      */
     private void initMds() {
-        Log.d("Movesense init","in initMDS");
         mMds = Mds.builder().build(this);
-        if(mMds == null) {
-            Log.d("Movesense init","Mds init is null");
-        }
-
     }
 
 
@@ -407,7 +403,9 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
     public void startScan() {
         connectButton.setText("Scanning");
         mNewDeviceArrayList.clear();
-        mNewDeviceAdapter.notifyDataSetChanged();
+        if (mNewDeviceAdapter != null) {
+            mNewDeviceAdapter.notifyDataSetChanged();
+        }
 
         mScanSubscription = getBleClient().scanBleDevices(new ScanSettings.Builder().build()).subscribe(scanResult -> {
             Log.d(LOG_TAG, "scanResult: " + scanResult);
@@ -478,7 +476,6 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
             // Get the device that was clicked
             device = mPreviousDeviceArrayList.get(position);
             if (device.isConnected()) {
-                Log.i(LOG_TAG, "Connecting to BLE device: " + device.name);
                 return;
             }
         }
@@ -509,9 +506,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
 
         stopScan();
         if (mMds == null) {
-            Log.d("Movesense", "object is null");
             initMds();
-            return;
         }
         mMds.connect(bleDevice.getMacAddress(), new MdsConnectionListener() {
             @Override
@@ -536,7 +531,7 @@ public class BluetoothActivity extends AppCompatActivity implements AdapterView.
                 connectButton.setText("Scan");
                 connectButton.setEnabled(true);
 
-//            Set home button background tint
+                // Set home button background tint
                 selectedDevices.add(device);
 
                 disconnectButton.setEnabled(true);

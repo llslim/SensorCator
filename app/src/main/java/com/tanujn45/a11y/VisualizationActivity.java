@@ -227,6 +227,10 @@ public class VisualizationActivity extends AppCompatActivity {
                     continue;
                 }
 
+                if (currGesture.contains("handlandmarkerFile1234")) {
+                    continue;
+                }
+
                 if (currGesture.endsWith(".csv")) {
                     String path = gesture.getAbsolutePath();
                     String name = "";

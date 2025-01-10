@@ -13,8 +13,11 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 
 import com.tanujn45.a11y.CSVEditor.CSVFile;
@@ -23,6 +26,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public class GestureInstanceActivity extends AppCompatActivity {
     private String gestureName, speakableText, path, folderName;
@@ -36,7 +40,40 @@ public class GestureInstanceActivity extends AppCompatActivity {
     TextToSpeech tts;
     boolean noSpeakableText = false;
 
-    // Expects GestureCategoryName as extra intent
+    private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        if (result.getResultCode() == RESULT_OK) {
+            Intent data = result.getData();
+            if (data != null) {
+                String instanceName = data.getStringExtra("refresh");
+                if (instanceName.equals("refresh")) {
+                    readSubMaster();
+                    instanceList.clear();
+                    setInstanceList();
+                }
+            }
+        }
+    });
+
+    private void readSubMaster() {
+        try {
+            File subMasterFile = new File(path, "master_" + folderName + ".csv");
+            if (!subMasterFile.exists()) {
+                try {
+                    subMaster = new CSVFile(new String[]{"Instance name", "Start time", "End time"}, subMasterFile.getAbsolutePath());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                try {
+                    subMaster = new CSVFile(subMasterFile.getAbsolutePath());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,12 +97,6 @@ public class GestureInstanceActivity extends AppCompatActivity {
         File subMasterFile = new File(path, "master_" + folderName + ".csv");
         File masterFile = new File(directory, "master.csv");
 
-        tts = new TextToSpeech(this, status -> {
-            if (status != TextToSpeech.ERROR) {
-                tts.setLanguage(Locale.US);
-            }
-        });
-
         if (!subMasterFile.exists()) {
             try {
                 subMaster = new CSVFile(new String[]{"Instance name", "Start time", "End time"}, subMasterFile.getAbsolutePath());
@@ -85,6 +116,12 @@ public class GestureInstanceActivity extends AppCompatActivity {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        tts = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.ERROR) {
+                tts.setLanguage(Locale.US);
+            }
+        });
 
         speakableText = master.getRowWithData(gestureName)[1];
 
@@ -129,7 +166,7 @@ public class GestureInstanceActivity extends AppCompatActivity {
         Intent intent = new Intent(this, InstanceDataActivity.class);
         intent.putExtra("gestureCategoryName", gestureName);
         intent.putExtra("instanceName", selectedItem);
-        startActivity(intent);
+        activityResultLauncher.launch(intent);
     }
 
     public void addGestureInstance(View view) {
@@ -144,12 +181,18 @@ public class GestureInstanceActivity extends AppCompatActivity {
 
         EditText gestureCategoryNameEditText = dialogView.findViewById(R.id.gestureCategoryNameEditText);
         EditText speakableTextEditText = dialogView.findViewById(R.id.speakableTextEditText);
+        SwitchCompat ignoreGesture = dialogView.findViewById(R.id.ignoreGestureCategorySwitch);
         Button cancelButton = dialogView.findViewById(R.id.cancelButton);
         Button saveButton = dialogView.findViewById(R.id.saveButton);
         Button deleteButton = dialogView.findViewById(R.id.deleteButton);
         gestureCategoryNameEditText.setText(gestureName);
         if (!noSpeakableText) {
             speakableTextEditText.setText(speakableText);
+        }
+        ignoreGesture.setChecked(false);
+        String toIgnore = master.getRowWithData(gestureName)[4];
+        if (Objects.equals(toIgnore, "true")) {
+            ignoreGesture.setChecked(true);
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -197,6 +240,7 @@ public class GestureInstanceActivity extends AppCompatActivity {
             rowData[0] = gestureCategoryNameEditText.getText().toString().trim();
             rowData[1] = speakableTextEditText.getText().toString().trim().replace(",", "|");
             rowData[2] = path;
+            rowData[4] = String.valueOf(ignoreGesture.isChecked());
             master.save();
 
             alertDialog.dismiss();
@@ -210,8 +254,8 @@ public class GestureInstanceActivity extends AppCompatActivity {
             master.deleteRowWithData(gestureName);
             master.save();
             alertDialog.dismiss();
-            Intent intent = new Intent(GestureInstanceActivity.this, GestureCategoryActivity.class);
-            startActivity(intent);
+//            Intent intent = new Intent(GestureInstanceActivity.this, GestureCategoryActivity.class);
+//            startActivity(intent);
             finish();
         });
 
