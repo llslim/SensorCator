@@ -1,19 +1,18 @@
-# Product Requirement Document (PRD) - SensorCator MAUI (Windows)
+# Product Requirement Document (PRD) - SensorCator WPF (Windows)
 
-This PRD outlines the requirements, research findings, and phased release plan for porting the **SensorCator** Android app to a **.NET MAUI** desktop application targeting **Windows (WinUI 3)**.
+This PRD outlines the requirements, research findings, and phased release plan for porting the **SensorCator** Android app to a **WPF (.NET 8)** desktop application targeting **Windows**.
 
 ---
 
 ## 1. Product Objective
-Port the core capabilities of SensorCator (IMU data recording, video synchronization, signal preprocessing, gesture comparison, and real-time classification) to a desktop environment on Windows using C# and .NET MAUI.
+Port the core capabilities of SensorCator (IMU data recording, video synchronization, signal preprocessing, gesture comparison, and real-time classification) to a desktop environment on Windows using C# and WPF.
 
 ---
 
 ## 2. Research Findings
 
 ### A. Bluetooth Low Energy (BLE) on Windows
-* **The Challenge**: Xamarin/Android wrapper libraries like `Plugin.Movesense` (by Andy Wigley) or `Kaasa.Mds` wrapping native MDS libraries (`mdslib.aar` / `mdslib.framework`) do not support the Windows desktop target. The cross-platform `Plugin.BLE` NuGet library has known stability issues and incomplete implementations on Windows.
-* **The Solution**: Use native Windows WinRT BLE APIs (`Windows.Devices.Bluetooth` and `Windows.Devices.Bluetooth.GenericAttributeProfile`) directly in the Windows platform directory of the MAUI project.
+* **The Solution**: Use native Windows WinRT BLE APIs (`Windows.Devices.Bluetooth` and `Windows.Devices.Bluetooth.GenericAttributeProfile`) directly in the WPF application. This allows direct, robust connection to the sensor without relying on mobile-only MDS wrappers or buggy cross-platform plugins.
 * **Movesense API over BLE GATT**:
   * **Movesense Service UUID**: `34834800-0000-1000-8000-00805f9b34fb`
   * **Command characteristic**: `34834801-0000-1000-8000-00805f9b34fb` (used to send PUT/GET/SUBSCRIBE request packets).
@@ -27,7 +26,7 @@ Port the core capabilities of SensorCator (IMU data recording, video synchroniza
   * **Benefit**: Zero external dependencies, extremely fast startup/inference times, and easy cross-platform porting to macOS/mobile if required in the future.
 
 ### C. Data Logging & Visualizations
-* **Signal Plotting**: Use **LiveCharts2** (specifically `LiveChartsCore.SkiaSharpView.Maui`), which is open-source, highly responsive on Windows, and integrates directly with MAUI.
+* **Signal Plotting**: Use **LiveCharts2** (specifically `LiveChartsCore.SkiaSharpView.WPF`), which is open-source, highly responsive on Windows, and integrates directly with WPF.
 * **Storage**: Store logged sensor runs as standard CSV files matching the schema: `Timestamp,acc_x,acc_y,acc_z,gyro_x,gyro_y,gyro_z,magn_x,magn_y,magn_z`.
 
 ---
@@ -62,7 +61,7 @@ Phase 1: MVP Core Pipeline  ===>  Phase 2: Video & Trimming  ===>  Phase 3: KMea
 * **Scope**:
   * Implement the custom `KMeansClassifier` and `LcsMatcher` in C#.
   * Add the **AAC Speech Grid Page** (clickable card grid with associated text).
-  * Implement background streaming classification. When a gesture is recognized, trigger Windows native Text-to-Speech (`Microsoft.Maui.Media.TextToSpeech`) to speak the phrase.
+  * Implement background streaming classification. When a gesture is recognized, trigger Windows native Text-to-Speech (`System.Speech.Synthesis`) to speak the phrase.
 
 ### **Phase 4: Advanced Visualizations & Analytics**
 * **Goals**: Build tools for gesture model verification.
@@ -85,4 +84,4 @@ Phase 1: MVP Core Pipeline  ===>  Phase 2: Video & Trimming  ===>  Phase 3: KMea
 ### Interface Mockup
 * **Main Dashboard**: Simple tabs for **Connect/Record** and **View Logs**.
 * **Connect/Record Tab**: A list view of discovered BLE devices, a connect button, and a prominent start/stop recording button.
-* **View Logs Tab**: A file picker/dropdown displaying saved CSV files, and a SKChart (LiveCharts2) plotting the raw signal.
+* **View Logs Tab**: A file picker/dropdown displaying saved CSV files, and a Chart plotting the raw signal.
