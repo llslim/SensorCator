@@ -1,0 +1,35 @@
+name: Windows WPF Auto Build
+
+on:
+  push:
+    branches:
+      - windows
+  pull_request:
+    branches:
+      - windows
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore GestureFlowWPF/GestureFlowWPF.csproj
+
+    - name: Publish Standalone Executable
+      run: |
+        dotnet publish GestureFlowWPF/GestureFlowWPF.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true --self-contained true -o publish_output
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: GestureFlowWPF-Release
+        path: publish_output/
