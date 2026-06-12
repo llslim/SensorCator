@@ -21,7 +21,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class git add GestureCategoryActivity extends AppCompatActivity {
+public class GestureCategoryActivity extends AppCompatActivity {
 
     private File directory;
     private CSVFile master;
