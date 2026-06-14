@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
@@ -107,20 +108,26 @@ namespace GestureFlowWPF.Services
 
                 _device.ConnectionStatusChanged += Device_ConnectionStatusChanged;
 
-                var servicesResult = await _device.GetGattServicesForUuidAsync(GSP_SERVICE_UUID);
+                var servicesResult = await _device.GetGattServicesForUuidAsync(GSP_SERVICE_UUID, BluetoothCacheMode.Uncached);
                 if (servicesResult.Status != GattCommunicationStatus.Success || servicesResult.Services.Count == 0)
                 {
-                    StatusChanged?.Invoke("GSP Service not found on device.");
-                    await DisconnectAsync();
+                    var allServices = await _device.GetGattServicesAsync(BluetoothCacheMode.Uncached);
+                    string serviceList = "None";
+                    if (allServices.Status == GattCommunicationStatus.Success && allServices.Services.Count > 0)
+                    {
+                        serviceList = string.Join(", ", allServices.Services.Select(s => s.Uuid.ToString().Substring(0, 8)));
+                    }
+                    StatusChanged?.Invoke($"GSP Service not found. Discovered: [{serviceList}] (Status: {servicesResult.Status}).");
+                    await DisconnectAsync(true);
                     return false;
                 }
 
                 var service = servicesResult.Services[0];
-                var characteristicsResult = await service.GetCharacteristicsAsync();
+                var characteristicsResult = await service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
                 if (characteristicsResult.Status != GattCommunicationStatus.Success)
                 {
-                    StatusChanged?.Invoke("Failed to retrieve characteristics.");
-                    await DisconnectAsync();
+                    StatusChanged?.Invoke($"Failed to retrieve characteristics (Status: {characteristicsResult.Status}).");
+                    await DisconnectAsync(true);
                     return false;
                 }
 
@@ -139,7 +146,7 @@ namespace GestureFlowWPF.Services
                 if (_writeCharacteristic == null || _notifyCharacteristic == null)
                 {
                     StatusChanged?.Invoke("GSP characteristics not found.");
-                    await DisconnectAsync();
+                    await DisconnectAsync(true);
                     return false;
                 }
 
@@ -149,8 +156,8 @@ namespace GestureFlowWPF.Services
 
                 if (cccdStatus != GattCommunicationStatus.Success)
                 {
-                    StatusChanged?.Invoke("Failed to register for notifications.");
-                    await DisconnectAsync();
+                    StatusChanged?.Invoke($"Failed to register for notifications (Status: {cccdStatus}).");
+                    await DisconnectAsync(true);
                     return false;
                 }
 
@@ -161,7 +168,7 @@ namespace GestureFlowWPF.Services
             catch (Exception ex)
             {
                 StatusChanged?.Invoke($"Connection error: {ex.Message}");
-                await DisconnectAsync();
+                await DisconnectAsync(true);
                 return false;
             }
         }
@@ -245,9 +252,9 @@ namespace GestureFlowWPF.Services
             }
         }
 
-        public async Task DisconnectAsync()
+        public async Task DisconnectAsync(bool silent = false)
         {
-            StatusChanged?.Invoke("Disconnecting...");
+            if (!silent) StatusChanged?.Invoke("Disconnecting...");
 
             if (_notifyCharacteristic != null)
             {
@@ -270,7 +277,7 @@ namespace GestureFlowWPF.Services
                 _device = null;
             }
 
-            StatusChanged?.Invoke("Disconnected.");
+            if (!silent) StatusChanged?.Invoke("Disconnected.");
         }
 
         private void NotifyCharacteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)

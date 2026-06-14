@@ -4,13 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GestureFlowWPF"
+        xmlns:helpers="clr-namespace:GestureFlowWPF.Helpers"
         xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         mc:Ignorable="d"
-        Title="GestureFlow - SensorCator Windows Port" Height="700" Width="1100"
+        Title="GestureFlow - SensorCator Windows Port" Height="700" Width="1250"
         Background="#11111B" SnapsToDevicePixels="True" WindowStartupLocation="CenterScreen">
     
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <helpers:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
+        <helpers:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <helpers:CardCheckedConverter x:Key="CardCheckedConverter"/>
         
         <!-- Modern Dark Theme Palette -->
         <SolidColorBrush x:Key="WindowBgBrush" Color="#11111B" />
@@ -202,6 +206,328 @@
         <!-- Tabbed Navigation Content -->
         <TabControl Grid.Row="1">
             
+            <!-- Tab 0: AAC Dashboard -->
+            <TabItem Header="AAC Dashboard">
+                <Grid Margin="0,15,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="120" /> <!-- Speech Display Text Area -->
+                        <RowDefinition Height="10" />  <!-- Spacer -->
+                        <RowDefinition Height="*" />    <!-- Content Grid (Cards / Keyboard) -->
+                        <RowDefinition Height="15" />  <!-- Spacer -->
+                        <RowDefinition Height="Auto" /> <!-- Control Buttons Bar -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Row 0: Speech Display Text Area -->
+                    <Border Grid.Row="0" CornerRadius="12" BorderThickness="1" BorderBrush="#313244" Background="{Binding AacSettings.BgColor}">
+                        <TextBox x:Name="SpeechDisplayTextBox" 
+                                 Text="{Binding SpeechDisplayText, UpdateSourceTrigger=PropertyChanged}" 
+                                 Background="Transparent" 
+                                 Foreground="{Binding AacSettings.FgColor}" 
+                                 FontSize="{Binding AacSettings.FontSize}" 
+                                 FontFamily="Segoe UI"
+                                 BorderThickness="0" 
+                                 Padding="15,10" 
+                                 TextWrapping="Wrap" 
+                                 AcceptsReturn="True" 
+                                 VerticalScrollBarVisibility="Auto"
+                                 SelectionBrush="#89B4FA"
+                                 IsInactiveSelectionHighlightEnabled="True"/>
+                    </Border>
+
+                    <!-- Row 2: Content Grid (Cards / Keyboard) -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />   <!-- Cards / Activities Decks -->
+                            <ColumnDefinition Width="20" />  <!-- Spacer -->
+                            <ColumnDefinition Width="420" /> <!-- Touch Keyboard -->
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Column: Activities & Cards -->
+                        <Grid Grid.Column="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160" /> <!-- Activities list -->
+                                <ColumnDefinition Width="15" />  <!-- Spacer -->
+                                <ColumnDefinition Width="*" />   <!-- Vocabulary Cards Grid -->
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Left: Decks / Activities list -->
+                            <Border Grid.Column="0" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Activity Decks" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                                    
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding AllActivities}" SelectedItem="{Binding ActiveActivity}" Background="Transparent" BorderThickness="0" Padding="0">
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="Margin" Value="0,0,0,8"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="Bd" CornerRadius="8" Padding="12,10" Background="#252538" BorderBrush="#313244" BorderThickness="1">
+                                                                <ContentPresenter HorizontalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="#89B4FA"/>
+                                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#89B4FA"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#89B4FA"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#CDD6F4"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#11111B"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+
+                            <!-- Right: Vocabulary Cards Grid -->
+                            <Border Grid.Column="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="12">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding ActiveCards}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Columns="3" VerticalAlignment="Top"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Margin="6" Height="110" Click="VocabularyCard_Click" Background="#252538" Padding="5">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="CardBorder" CornerRadius="10" Background="#252538" BorderBrush="#313244" BorderThickness="1" Padding="10">
+                                                                <Grid>
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="*" />
+                                                                        <RowDefinition Height="Auto" />
+                                                                    </Grid.RowDefinitions>
+                                                                    <!-- Emoji Icon -->
+                                                                    <TextBlock Grid.Row="0" Text="{Binding ImagePath}" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                    <!-- Label -->
+                                                                    <TextBlock Grid.Row="1" Text="{Binding TextDisplay}" FontSize="12" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                                                </Grid>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="CardBorder" Property="Background" Value="#313244"/>
+                                                                    <Setter TargetName="CardBorder" Property="BorderBrush" Value="#89B4FA"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="CardBorder" Property="Background" Value="#45475A"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </Grid>
+
+                        <!-- Right Column: Touch Virtual Keyboard -->
+                        <Border Grid.Column="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Text="Keyboard Input" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                                
+                                <Grid Grid.Row="1">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Row 0: Numbers -->
+                                    <UniformGrid Grid.Row="0" Columns="10" Margin="0,2">
+                                        <Button Content="1" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="2" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="3" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="4" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="5" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="6" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="7" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="8" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="9" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="0" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                    </UniformGrid>
+
+                                    <!-- Row 1: QWERTY -->
+                                    <UniformGrid Grid.Row="1" Columns="10" Margin="0,2">
+                                        <Button Content="Q" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="W" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="E" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="R" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="T" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="Y" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="U" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="I" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="O" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        <Button Content="P" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                    </UniformGrid>
+
+                                    <!-- Row 2: ASDFGHJKL -->
+                                    <Grid Grid.Row="2" Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="0.5*" />
+                                            <ColumnDefinition Width="9*" />
+                                            <ColumnDefinition Width="0.5*" />
+                                        </Grid.ColumnDefinitions>
+                                        <UniformGrid Grid.Column="1" Columns="9">
+                                            <Button Content="A" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="S" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="D" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="F" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="G" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="H" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="J" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="K" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="L" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        </UniformGrid>
+                                    </Grid>
+
+                                    <!-- Row 3: ZXCVBNM -->
+                                    <Grid Grid.Row="3" Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1*" />
+                                            <ColumnDefinition Width="10*" />
+                                            <ColumnDefinition Width="1*" />
+                                        </Grid.ColumnDefinitions>
+                                        <UniformGrid Grid.Column="1" Columns="10">
+                                            <Button Content="Z" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="X" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="C" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="V" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="B" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="N" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="M" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="," Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="." Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                            <Button Content="?" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#252538"/>
+                                        </UniformGrid>
+                                    </Grid>
+
+                                    <!-- Row 4: Controls (Backspace, Space, Clear) -->
+                                    <Grid Grid.Row="4" Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="2.5*" />
+                                            <ColumnDefinition Width="5*" />
+                                            <ColumnDefinition Width="2.5*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Content="Backspace" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#313244" FontSize="11"/>
+                                        <Button Grid.Column="1" Content="Space" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#313244"/>
+                                        <Button Grid.Column="2" Content="Clear" Click="KeyboardKey_Click" Margin="2" Padding="2" Background="#F38BA8" Foreground="#11111B" FontSize="11"/>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- Row 4: Control Buttons Bar -->
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Control Group -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <!-- Speak Button -->
+                            <Button Content="🔊 Speak" Click="SpeakDisplay_Click" Style="{StaticResource AccentButton}" Width="140" Height="45" FontSize="15" FontWeight="Bold" Margin="0,0,10,0"/>
+                            <!-- Clear Button -->
+                            <Button Content="🗑 Clear" Click="ClearDisplay_Click" Width="120" Height="45" FontSize="14" Margin="0,0,20,0"/>
+
+                            <!-- Speech On/Off Toggle -->
+                            <Button Click="SpeechToggle_Click" Width="130" Height="45" Margin="0,0,10,0">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bdr" CornerRadius="6" Padding="10" BorderThickness="1">
+                                            <TextBlock Text="Speech: ON" x:Name="Txt" FontWeight="SemiBold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding Path=DataContext.AacSettings.SpeechOn, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter TargetName="Bdr" Property="Background" Value="#A6E3A1"/>
+                                                <Setter TargetName="Bdr" Property="BorderBrush" Value="#A6E3A1"/>
+                                                <Setter TargetName="Txt" Property="Foreground" Value="#11111B"/>
+                                                <Setter TargetName="Txt" Property="Text" Value="Speech: ON"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Path=DataContext.AacSettings.SpeechOn, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                <Setter TargetName="Bdr" Property="Background" Value="#313244"/>
+                                                <Setter TargetName="Bdr" Property="BorderBrush" Value="#313244"/>
+                                                <Setter TargetName="Txt" Property="Foreground" Value="#F38BA8"/>
+                                                <Setter TargetName="Txt" Property="Text" Value="Speech: OFF"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- Sensor Input Active Toggle -->
+                            <Button Click="SensorInputToggle_Click" Width="130" Height="45" Margin="0,0,10,0">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bdr" CornerRadius="6" Padding="10" BorderThickness="1">
+                                            <TextBlock Text="Sensor: ACTIVE" x:Name="Txt" FontWeight="SemiBold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding Path=DataContext.AacSettings.SensorInputActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter TargetName="Bdr" Property="Background" Value="#A6E3A1"/>
+                                                <Setter TargetName="Bdr" Property="BorderBrush" Value="#A6E3A1"/>
+                                                <Setter TargetName="Txt" Property="Foreground" Value="#11111B"/>
+                                                <Setter TargetName="Txt" Property="Text" Value="Sensor: ACTIVE"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Path=DataContext.AacSettings.SensorInputActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                <Setter TargetName="Bdr" Property="Background" Value="#313244"/>
+                                                <Setter TargetName="Bdr" Property="BorderBrush" Value="#313244"/>
+                                                <Setter TargetName="Txt" Property="Foreground" Value="#A6ADC8"/>
+                                                <Setter TargetName="Txt" Property="Text" Value="Sensor: PAUSED"/>
+                                            </DataTrigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <!-- Full Screen Toggle -->
+                            <Button Content="🖥 Full Screen" Click="FullScreenToggle_Click" Width="130" Height="45"/>
+                        </StackPanel>
+
+                        <!-- Settings Button -->
+                        <Button Grid.Column="1" Content="⚙ Settings" Click="OpenSettings_Click" Width="130" Height="45" Style="{StaticResource AccentButton}"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
             <!-- Tab 1: Connect & Record -->
             <TabItem Header="Connect &amp; Record">
                 <Grid Margin="0,15,0,0">
@@ -309,104 +635,162 @@
                             </Grid>
                         </Border>
 
-                        <!-- Sensor Values Grid -->
+                        <!-- Content Panel Grid -->
                         <Grid Grid.Row="1">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="15" />
+                                <ColumnDefinition Width="380" />
+                            </Grid.ColumnDefinitions>
 
-                            <!-- Accelerometer Card -->
-                            <Border Grid.Row="0" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,0,0,10">
+                            <!-- Sensor Values Grid -->
+                            <Grid Grid.Column="0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Accelerometer Card -->
+                                <Border Grid.Row="0" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="15" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
+                                            <TextBlock Text="ACCELEROMETER" FontSize="13" FontWeight="Bold" Foreground="#F38BA8" />
+                                            <TextBlock Text=" — Linear movement (m/s²)" FontSize="10" Foreground="#A6ADC8" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <UniformGrid Grid.Row="1" Columns="3" VerticalAlignment="Center">
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="X AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding AccX, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="Y AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding AccY, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="Z AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding AccZ, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </UniformGrid>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Gyroscope Card -->
+                                <Border Grid.Row="1" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="15" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
+                                            <TextBlock Text="GYROSCOPE" FontSize="13" FontWeight="Bold" Foreground="#F9E2AF" />
+                                            <TextBlock Text=" — Angular velocity (°/s)" FontSize="10" Foreground="#A6ADC8" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <UniformGrid Grid.Row="1" Columns="3" VerticalAlignment="Center">
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="X AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding GyroX, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="Y AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding GyroY, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="Z AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding GyroZ, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </UniformGrid>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Magnetometer Card -->
+                                <Border Grid.Row="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="15">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
+                                            <TextBlock Text="MAGNETOMETER" FontSize="13" FontWeight="Bold" Foreground="#CBA6F7" />
+                                            <TextBlock Text=" — Magnetic forces (mgauss)" FontSize="10" Foreground="#A6ADC8" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <UniformGrid Grid.Row="1" Columns="3" VerticalAlignment="Center">
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="X AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding MagX, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="Y AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding MagY, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="5,0">
+                                                <TextBlock Text="Z AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding MagZ, StringFormat={}{0:F3}}" FontSize="24" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </UniformGrid>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+
+                            <!-- Live Camera Preview Panel -->
+                            <Border Grid.Column="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="15">
                                 <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="150" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="ACCELEROMETER" FontSize="14" FontWeight="Bold" Foreground="#F38BA8" />
-                                        <TextBlock Text="Linear movement forces" FontSize="10" Foreground="#A6ADC8" Margin="0,2,0,0"/>
-                                        <TextBlock Text="Unit: m/s²" FontSize="10" Foreground="#A6ADC8" />
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="LIVE CAMERA PREVIEW" FontSize="11" FontWeight="Bold" Foreground="#89B4FA" Margin="0,0,0,10"/>
+                                    <Border Grid.Row="1" CornerRadius="8" ClipToBounds="True" Background="#000000">
+                                        <Grid>
+                                            <Image Source="{Binding LiveCameraPreview}" Stretch="Uniform" x:Name="CameraImage" />
+                                            <!-- Visual Landmarks Overlay -->
+                                            <Viewbox Stretch="Uniform">
+                                                <Canvas Width="100" Height="100" Background="Transparent">
+                                                    <ItemsControl ItemsSource="{Binding HandLandmarkPoints}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <Canvas Background="Transparent" Width="100" Height="100"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Ellipse Width="1.5" Height="1.5" Fill="#89B4FA" Margin="-0.75,-0.75,0,0">
+                                                                    <Ellipse.RenderTransform>
+                                                                        <TranslateTransform X="{Binding X}" Y="{Binding Y}" />
+                                                                    </Ellipse.RenderTransform>
+                                                                </Ellipse>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Canvas>
+                                            </Viewbox>
+                                        </Grid>
+                                    </Border>
+                                    <!-- Phase 3 Gesture status & mode toggle -->
+                                    <StackPanel Grid.Row="2" Margin="0,15,0,0">
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="RECOGNIZED GESTURE" FontSize="10" Foreground="#A6ADC8" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding DetectedGestureName}" FontSize="24" FontWeight="Bold" Foreground="#A6E3A1" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" Content="IMU Gesture-Only" IsChecked="{Binding ImuGestureOnlyMode}" Foreground="#CDD6F4" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        </Grid>
                                     </StackPanel>
-
-                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="X AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding AccX, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="Y AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding AccY, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="Z AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding AccZ, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </UniformGrid>
-                                </Grid>
-                            </Border>
-
-                            <!-- Gyroscope Card -->
-                            <Border Grid.Row="1" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,0,0,10">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="150" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="GYROSCOPE" FontSize="14" FontWeight="Bold" Foreground="#F9E2AF" />
-                                        <TextBlock Text="Angular velocity" FontSize="10" Foreground="#A6ADC8" Margin="0,2,0,0"/>
-                                        <TextBlock Text="Unit: °/s" FontSize="10" Foreground="#A6ADC8" />
-                                    </StackPanel>
-
-                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="X AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding GyroX, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="Y AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding GyroY, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="Z AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding GyroZ, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </UniformGrid>
-                                </Grid>
-                            </Border>
-
-                            <!-- Magnetometer Card -->
-                            <Border Grid.Row="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="20">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="150" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                        <TextBlock Text="MAGNETOMETER" FontSize="14" FontWeight="Bold" Foreground="#CBA6F7" />
-                                        <TextBlock Text="Magnetic field forces" FontSize="10" Foreground="#A6ADC8" Margin="0,2,0,0"/>
-                                        <TextBlock Text="Unit: mgauss" FontSize="10" Foreground="#A6ADC8" />
-                                    </StackPanel>
-
-                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="X AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding MagX, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="Y AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding MagY, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                        <StackPanel Margin="10,0">
-                                            <TextBlock Text="Z AXIS" FontSize="10" Foreground="#A6ADC8" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding MagZ, StringFormat={}{0:F3}}" FontSize="28" FontWeight="Bold" Foreground="#CDD6F4" HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </UniformGrid>
                                 </Grid>
                             </Border>
                         </Grid>
@@ -506,12 +890,680 @@
                     </Border>
                 </Grid>
             </TabItem>
+
+            <!-- Tab 3: Timeline Trimmer -->
+            <TabItem Header="Timeline Trimmer">
+                <Grid Margin="0,15,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300" /> <!-- File List -->
+                        <ColumnDefinition Width="15" />  <!-- Spacer -->
+                        <ColumnDefinition Width="*" />   <!-- Trimmer Workspace -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left panel: logs file selection -->
+                    <Border Grid.Column="0" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="15">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Select Log to Trim" FontSize="16" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,10"/>
+                            
+                            <ListBox Grid.Row="1" ItemsSource="{Binding LogFiles}" SelectedItem="{Binding SelectedLogFile}" Margin="0,0,0,15">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="2">
+                                            <Path Data="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13,9V3.5L18.5,9H13Z" Fill="#A6ADC8" Width="14" Height="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding}" FontSize="12" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Button Grid.Row="2" Content="Refresh Files" Click="RefreshButton_Click"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right panel: trimmer workspace -->
+                    <Border Grid.Column="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="20">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" /> <!-- Header -->
+                                <RowDefinition Height="*" />    <!-- Preview & Slider -->
+                                <RowDefinition Height="Auto" /> <!-- Trim controls -->
+                            </Grid.RowDefinitions>
+
+                            <!-- Header -->
+                            <StackPanel Grid.Row="0" Margin="0,0,0,15">
+                                <TextBlock Text="TIMELINE TRIMMER &amp; SLICER" FontSize="11" FontWeight="Bold" Foreground="#89B4FA"/>
+                                <TextBlock Text="{Binding SelectedLogFile, TargetNullValue='No file selected. Please select a CSV log file on the left.', StringFormat='Trimming: {0}'}" 
+                                           Foreground="#CDD6F4" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <!-- Preview Viewports and Slider -->
+                            <Grid Grid.Row="1" Margin="0,0,0,15">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />    <!-- Video frame preview -->
+                                    <RowDefinition Height="Auto" /> <!-- Playback controls -->
+                                    <RowDefinition Height="Auto" /> <!-- Slider controls -->
+                                </Grid.RowDefinitions>
+
+                                <!-- Video frame preview -->
+                                <Border Grid.Row="0" CornerRadius="8" ClipToBounds="True" Background="#000000" Margin="0,0,0,15">
+                                    <Grid>
+                                        <Image Source="{Binding TrimVideoPreview}" Stretch="Uniform" />
+                                        <!-- Fallback text if no video exists -->
+                                        <TextBlock Text="No video file found for this log run or video seeking inactive." 
+                                                   Foreground="#A6ADC8" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TrimVideoPreview}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Playback Controls (Play/Stop button + status text) -->
+                                <Grid Grid.Row="1" Margin="0,0,0,15">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Content="{Binding PlayButtonText}" Click="PlayButton_Click" Width="100" Height="30" FontSize="12" Style="{StaticResource AccentButton}"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding PlaybackStatusText}" Foreground="#CDD6F4" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                                </Grid>
+
+                                <!-- Slider controls -->
+                                <StackPanel Grid.Row="2">
+                                    <Grid Margin="0,0,0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding TrimStartSec, StringFormat={}{0:F2}s}" Foreground="#CDD6F4" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TrimEndSec, StringFormat={}{0:F2}s}" Foreground="#CDD6F4" FontSize="12" FontWeight="SemiBold"/>
+                                    </Grid>
+                                    
+                                    <!-- Simple Range sliders -->
+                                    <StackPanel Orientation="Vertical">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Start Point:" Foreground="#A6ADC8" VerticalAlignment="Center"/>
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="{Binding TrimMaxSec}" Value="{Binding TrimStartSec}" TickFrequency="0.1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="2" Width="80" Margin="10,0,0,0"
+                                                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" BorderThickness="1" Padding="5,2"
+                                                     VerticalAlignment="Center" KeyDown="TextBox_KeyDown"
+                                                     Text="{Binding TrimStartSec, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F2}}" />
+                                        </Grid>
+                                        <Grid Margin="0,5,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="100" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="End Point:" Foreground="#A6ADC8" VerticalAlignment="Center"/>
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="{Binding TrimMaxSec}" Value="{Binding TrimEndSec}" TickFrequency="0.1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="2" Width="80" Margin="10,0,0,0"
+                                                     Background="#313244" Foreground="#CDD6F4" BorderBrush="#45475A" BorderThickness="1" Padding="5,2"
+                                                     VerticalAlignment="Center" KeyDown="TextBox_KeyDown"
+                                                     Text="{Binding TrimEndSec, UpdateSourceTrigger=LostFocus, StringFormat={}{0:F2}}" />
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Action buttons -->
+                            <Border Grid.Row="2" BorderBrush="#313244" BorderThickness="0,1,0,0" Padding="0,15,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Trimming will slice both the sensor CSV and its synchronized MP4 video run, saving them to trimmedData/ and trimmedVideos/ folders."
+                                               Foreground="#A6ADC8" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                                    <Button Grid.Column="1" Content="Trim Selected Run" Click="TrimButton_Click" Style="{StaticResource AccentButton}" Width="180" Height="40" FontSize="14"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab 4: Gesture Catalog -->
+            <TabItem Header="Gesture Catalog">
+                <Grid Margin="0,15,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="450" /> <!-- Templates List -->
+                        <ColumnDefinition Width="15" />  <!-- Spacer -->
+                        <ColumnDefinition Width="*" />   <!-- Record Template -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Panel: Gesture Templates List -->
+                    <Border Grid.Column="0" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="20">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Text="SAVED GESTURE TEMPLATES" FontSize="11" FontWeight="Bold" Foreground="#89B4FA" Margin="0,0,0,15"/>
+                            
+                            <ListBox Grid.Row="1" ItemsSource="{Binding GestureTemplates}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#252538" BorderBrush="#313244" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="Bold" Foreground="#CDD6F4"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                        <TextBlock Text="Threshold: " FontSize="11" Foreground="#A6ADC8"/>
+                                                        <TextBlock Text="{Binding Threshold, StringFormat={}{0:F1}}" FontSize="11" Foreground="#89B4FA" FontWeight="SemiBold"/>
+                                                        <TextBlock Text=" | Dimensions: " FontSize="11" Foreground="#A6ADC8" Margin="10,0,0,0"/>
+                                                        <TextBlock Text="6D (Accel + Gyro)" FontSize="11" Foreground="#CBA6F7" FontWeight="SemiBold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding UseGyro}" Value="False">
+                                                                            <Setter Property="Text" Value="3D (Accel Only)" />
+                                                                            <Setter Property="Foreground" Value="#F38BA8" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <TextBlock Text=" | Points: " FontSize="11" Foreground="#A6ADC8" Margin="10,0,0,0"/>
+                                                        <TextBlock Text="{Binding Points.Count}" FontSize="11" Foreground="#CDD6F4" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="Delete" Click="DeleteTemplateButton_Click" Background="#F38BA8" Foreground="#11111B" Padding="10,5" FontSize="11" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Right Panel: Record New Template from Crop -->
+                    <Border Grid.Column="2" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="20">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="RECORD GESTURE TEMPLATE FROM TRIMMER" FontSize="11" FontWeight="Bold" Foreground="#89B4FA" Margin="0,0,0,15"/>
+
+                            <StackPanel Grid.Row="1" VerticalAlignment="Top">
+                                <TextBlock Text="You can create a new gesture matching template by selecting a range using the Timeline Trimmer, naming it, and saving it here." 
+                                           Foreground="#A6ADC8" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+                                <Border Background="#252538" BorderBrush="#313244" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,0,20">
+                                    <StackPanel>
+                                        <TextBlock Text="CURRENT TRIMMER SELECTION" FontSize="10" Foreground="#89B4FA" FontWeight="Bold" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="{Binding SelectedLogFile, TargetNullValue='No log run file selected.'}" FontSize="13" FontWeight="SemiBold" Foreground="#CDD6F4"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                    <TextBlock Text="Crop Range: " FontSize="11" Foreground="#A6ADC8"/>
+                                                    <TextBlock Text="{Binding TrimStartSec, StringFormat={}{0:F2}s}" FontSize="11" Foreground="#CDD6F4" FontWeight="SemiBold"/>
+                                                    <TextBlock Text=" to " FontSize="11" Foreground="#A6ADC8"/>
+                                                    <TextBlock Text="{Binding TrimEndSec, StringFormat={}{0:F2}s}" FontSize="11" Foreground="#CDD6F4" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Gesture Name Input -->
+                                <TextBlock Text="Gesture Template Name:" Foreground="#CDD6F4" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding NewGestureName, UpdateSourceTrigger=PropertyChanged}" Background="#252538" Foreground="#CDD6F4" BorderBrush="#313244" BorderThickness="1" Padding="10" FontSize="14" Margin="0,0,0,20"/>
+
+                                <!-- Threshold Matching Parameter -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Similarity Distance Threshold (lower = stricter):" Foreground="#CDD6F4" FontSize="12" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding NewGestureThreshold, StringFormat={}{0:F1}}" Foreground="#89B4FA" FontSize="12" FontWeight="Bold"/>
+                                </Grid>
+                                <Slider Minimum="5.0" Maximum="50.0" Value="{Binding NewGestureThreshold}" TickFrequency="1.0" IsSnapToTickEnabled="True" Margin="0,0,0,20"/>
+
+                                <!-- Use Gyro Toggle -->
+                                <CheckBox IsChecked="{Binding NewGestureUseGyro}" Content="Use Gyroscope Telemetry in Matching (matches rotational speed in addition to acceleration)" Foreground="#CDD6F4" FontSize="12" Margin="0,0,0,25"/>
+
+                                <!-- Save Button -->
+                                <Button Content="Save Selected Range as Gesture Template" Click="RecordTemplateButton_Click" Style="{StaticResource AccentButton}" Height="45" FontSize="14" FontWeight="Bold"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
         </TabControl>
+
+        <!-- FULL SCREEN SPEECH DISPLAY OVERLAY -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="1000" Background="#11111B" Visibility="{Binding AacSettings.FullScreenMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid Margin="40">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" CornerRadius="15" BorderThickness="2" BorderBrush="#313244" Background="{Binding AacSettings.BgColor}">
+                    <TextBox x:Name="FullScreenTextBox" 
+                             Text="{Binding SpeechDisplayText, UpdateSourceTrigger=PropertyChanged}" 
+                             Background="Transparent" 
+                             Foreground="{Binding AacSettings.FgColor}" 
+                             FontSize="48" 
+                             FontFamily="Segoe UI"
+                             BorderThickness="0" 
+                             Padding="30" 
+                             TextWrapping="Wrap" 
+                             AcceptsReturn="True" 
+                             VerticalScrollBarVisibility="Auto"
+                             SelectionBrush="#89B4FA"
+                             IsInactiveSelectionHighlightEnabled="True"/>
+                </Border>
+
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <Button Content="🔊 Speak" Click="SpeakDisplay_Click" Style="{StaticResource AccentButton}" Width="200" Height="65" FontSize="20" FontWeight="Bold" Margin="0,0,20,0"/>
+                        <Button Content="🗑 Clear Display" Click="ClearDisplay_Click" Width="200" Height="65" FontSize="18" Margin="0,0,20,0"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1" Content="❌ Exit Full Screen" Click="FullScreenToggle_Click" Width="220" Height="65" FontSize="18"/>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- SETTINGS MODAL OVERLAY -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="990" Background="#C011111B" Visibility="{Binding IsSettingsVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="880" Height="560" Background="#1E1E2E" BorderBrush="#313244" BorderThickness="1.5" CornerRadius="16" Margin="40" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="15" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="15" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Title Bar -->
+                    <Grid Grid.Row="0">
+                        <TextBlock Text="AAC Configuration Hub" FontSize="20" FontWeight="Bold" Foreground="#CDD6F4"/>
+                        <Button Content="Close &amp; Save" HorizontalAlignment="Right" Click="CloseSettings_Click" Style="{StaticResource AccentButton}"/>
+                    </Grid>
+
+                    <!-- Content Area -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left Tabs Buttons -->
+                        <Border Grid.Column="0" Background="#252538" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="8">
+                            <StackPanel>
+                                <Button Content="Cards Manager" Click="SetSettingsTab_Click" Tag="0" Margin="0,0,0,8" Height="40" HorizontalAlignment="Stretch"/>
+                                <Button Content="Decks (Activities)" Click="SetSettingsTab_Click" Tag="1" Margin="0,0,0,8" Height="40" HorizontalAlignment="Stretch"/>
+                                <Button Content="Accuracy Heatmap" Click="SetSettingsTab_Click" Tag="2" Margin="0,0,0,8" Height="40" HorizontalAlignment="Stretch"/>
+                                <Button Content="Speech &amp; TTS" Click="SetSettingsTab_Click" Tag="3" Margin="0,0,0,8" Height="40" HorizontalAlignment="Stretch"/>
+                                <Button Content="Pronunciation" Click="SetSettingsTab_Click" Tag="4" Margin="0,0,0,8" Height="40" HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Right Panel -->
+                        <Border Grid.Column="2" Background="#252538" BorderBrush="#313244" BorderThickness="1" CornerRadius="12" Padding="15">
+                            <Grid>
+                                <!-- Tab 0: Cards Manager -->
+                                <Grid Visibility="{Binding SettingsTabIdx, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=0}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="240" />
+                                        <ColumnDefinition Width="15" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Grid.Column="0">
+                                        <ListBox ItemsSource="{Binding AllCards}" SelectedItem="{Binding SelectedCardForEdit}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding ImagePath}" FontSize="20" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding TextDisplay}" Foreground="#CDD6F4" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                        <Button Grid.Column="2" Content="❌" Background="Transparent" Padding="2" Click="DeleteCard_Click" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+
+                                    <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                                        <StackPanel Margin="5">
+                                            <TextBlock Text="Card Editor" FontSize="15" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Display Text:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding NewCardText, UpdateSourceTrigger=PropertyChanged}" Background="#1E1E2E" Foreground="#CDD6F4" BorderBrush="#313244" Padding="6" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Audio Output (phonetic overrides or file path):" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding NewCardAudio, UpdateSourceTrigger=PropertyChanged}" Background="#1E1E2E" Foreground="#CDD6F4" BorderBrush="#313244" Padding="6" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Emoji / Image Path:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                            <TextBox Text="{Binding NewCardIcon, UpdateSourceTrigger=PropertyChanged}" Background="#1E1E2E" Foreground="#CDD6F4" BorderBrush="#313244" Padding="6" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Associated Gesture:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                            <ComboBox ItemsSource="{Binding GestureTemplates}" SelectedValuePath="Name" DisplayMemberPath="Name" SelectedValue="{Binding NewCardGesture}" Background="#1E1E2E" Foreground="#CDD6F4" Margin="0,0,0,15"/>
+
+                                            <Grid>
+                                                <Button Content="➕ Add New Card" Click="AddCard_Click" Height="35">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource AccentButton}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedCardForEdit, Converter={StaticResource NullToVisibilityConverter}}" Value="Visible">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding SelectedCardForEdit, Converter={StaticResource NullToVisibilityConverter}}" Value="Visible">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="10" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button Grid.Column="0" Content="💾 Update" Click="UpdateCard_Click" Style="{StaticResource AccentButton}" Height="35"/>
+                                                    <Button Grid.Column="2" Content="Cancel" Click="CancelCardEdit_Click" Height="35"/>
+                                                </Grid>
+                                            </Grid>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Grid>
+
+                                <!-- Tab 1: Decks -->
+                                <Grid Visibility="{Binding SettingsTabIdx, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=1}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="15" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Grid.Column="0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <ListBox Grid.Row="0" ItemsSource="{Binding AllActivities}" SelectedItem="{Binding ActiveActivity}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Name}" Foreground="#CDD6F4" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1" Content="❌" Background="Transparent" Padding="2" Click="DeleteActivity_Click" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                        
+                                        <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                                            <TextBox Text="{Binding NewActivityName, UpdateSourceTrigger=PropertyChanged}" Background="#1E1E2E" Foreground="#CDD6F4" BorderBrush="#313244" Padding="5" Margin="0,0,0,5"/>
+                                            <Button Content="➕ Add Deck" Click="AddActivity_Click" Style="{StaticResource AccentButton}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <Grid Grid.Column="2">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="8" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Text="Cards in Selected Deck:" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4"/>
+                                        <ListBox Grid.Row="2" ItemsSource="{Binding AllCards}">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                    <Setter Property="Padding" Value="4"/>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding TextDisplay}" 
+                                                              Click="ToggleCardInActivity_Click"
+                                                              Foreground="#CDD6F4" FontSize="13">
+                                                        <CheckBox.IsChecked>
+                                                            <MultiBinding Converter="{StaticResource CardCheckedConverter}" Mode="OneWay">
+                                                                <Binding />
+                                                                <Binding Path="DataContext.ActiveActivity" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                            </MultiBinding>
+                                                        </CheckBox.IsChecked>
+                                                    </CheckBox>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Grid>
+
+                                <!-- Tab 2: Accuracy Heatmap -->
+                                <Grid Visibility="{Binding SettingsTabIdx, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=2}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="10" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0">
+                                        <TextBlock Text="DTW Template Similarity Matrix" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4"/>
+                                        <Button Content="🔄 Calculate" Click="RecalculateHeatmap_Click" Style="{StaticResource AccentButton}" HorizontalAlignment="Right" Padding="10,5"/>
+                                    </Grid>
+
+                                    <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding AccuracyMatrix}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="{Binding GestureTemplates.Count}" Rows="{Binding GestureTemplates.Count}"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{Binding CellColor}" BorderBrush="#313244" BorderThickness="0.5" Width="50" Height="50" CornerRadius="4" Margin="2">
+                                                        <ToolTipService.ToolTip>
+                                                            <ToolTip Background="#1E1E2E" Foreground="#CDD6F4">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="{Binding RowGesture, StringFormat={}Row: {0}}" FontWeight="Bold"/>
+                                                                    <TextBlock Text="{Binding ColGesture, StringFormat={}Col: {0}}" FontWeight="Bold"/>
+                                                                    <TextBlock Text="{Binding Distance, StringFormat={}Distance: {0:F3}}"/>
+                                                                </StackPanel>
+                                                            </ToolTip>
+                                                        </ToolTipService.ToolTip>
+                                                        <Grid>
+                                                            <TextBlock Text="{Binding DisplayValue}" Foreground="#CDD6F4" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Grid>
+
+                                <!-- Tab 3: Speech & TTS -->
+                                <ScrollViewer Visibility="{Binding SettingsTabIdx, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=3}" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Margin="5">
+                                        <TextBlock Text="Speech Settings" FontSize="15" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,10"/>
+
+                                        <TextBlock Text="Speak Button Trigger Setting:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <ComboBox SelectedIndex="{Binding AacSettings.SpeakSetting, Mode=TwoWay}" Background="#1E1E2E" Foreground="#CDD6F4" Margin="0,0,0,10">
+                                            <ComboBoxItem Content="Speak word-by-word (Play appends immediately)"/>
+                                            <ComboBoxItem Content="Speak sentence (Speak on full stops)"/>
+                                            <ComboBoxItem Content="Speak display (Synthesize on explicit click only)"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Speak Command IMU Gesture:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding GestureTemplates}" SelectedValuePath="Name" DisplayMemberPath="Name" SelectedValue="{Binding AacSettings.SpeakGestureName}" Background="#1E1E2E" Foreground="#CDD6F4" Margin="0,0,0,10"/>
+
+                                        <TextBlock Text="Clear Display Command IMU Gesture:" Foreground="#A6ADC8" Margin="0,0,0,10"/>
+                                        <ComboBox ItemsSource="{Binding GestureTemplates}" SelectedValuePath="Name" DisplayMemberPath="Name" SelectedValue="{Binding AacSettings.ClearGestureName}" Background="#1E1E2E" Foreground="#CDD6F4" Margin="0,0,0,15"/>
+
+                                        <Separator Background="#313244" Margin="0,5,0,10"/>
+
+                                        <TextBlock Text="TTS Synthesis Voice Profile:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding AvailableVoices}" SelectedValue="{Binding AacSettings.TtsVoiceName}" Background="#1E1E2E" Foreground="#CDD6F4" Margin="0,0,0,12"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="TTS Synthesis Speed (Rate):" Foreground="#A6ADC8"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding AacSettings.TtsSpeed}" Foreground="#89B4FA" FontWeight="Bold"/>
+                                        </Grid>
+                                        <Slider Minimum="-10" Maximum="10" Value="{Binding AacSettings.TtsSpeed}" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,0,0,10"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="TTS Volume:" Foreground="#A6ADC8"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding AacSettings.TtsVolume, StringFormat={}{0}%}" Foreground="#89B4FA" FontWeight="Bold"/>
+                                        </Grid>
+                                        <Slider Minimum="0" Maximum="100" Value="{Binding AacSettings.TtsVolume}" TickFrequency="5" IsSnapToTickEnabled="True" Margin="0,0,0,10"/>
+
+                                        <Separator Background="#313244" Margin="0,5,0,10"/>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="Speech Display Font Size (pt):" Foreground="#A6ADC8"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding AacSettings.FontSize}" Foreground="#89B4FA" FontWeight="Bold"/>
+                                        </Grid>
+                                        <Slider Minimum="14" Maximum="40" Value="{Binding AacSettings.FontSize}" TickFrequency="2" IsSnapToTickEnabled="True" Margin="0,0,0,12"/>
+
+                                        <TextBlock Text="Display Background Color Preset:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding AacSettings.BgColor}" Margin="0,0,0,10">
+                                            <ComboBoxItem Content="Deep Navy (#11111B)" Tag="#11111B"/>
+                                            <ComboBoxItem Content="Dark Charcoal (#1E1E2E)" Tag="#1E1E2E"/>
+                                            <ComboBoxItem Content="Medium Slate (#252538)" Tag="#252538"/>
+                                            <ComboBoxItem Content="Muted Green (#2E3B2E)" Tag="#2E3B2E"/>
+                                            <ComboBoxItem Content="High Contrast Black (#000000)" Tag="#000000"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Display Text Color Preset:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding AacSettings.FgColor}" Margin="0,0,0,10">
+                                            <ComboBoxItem Content="Soft Rosewater (#F5E0DC)" Tag="#F5E0DC"/>
+                                            <ComboBoxItem Content="Clean Lavender (#CDD6F4)" Tag="#CDD6F4"/>
+                                            <ComboBoxItem Content="Bright Cyan (#89B4FA)" Tag="#89B4FA"/>
+                                            <ComboBoxItem Content="Neon Yellow (#F9E2AF)" Tag="#F9E2AF"/>
+                                            <ComboBoxItem Content="High Contrast White (#FFFFFF)" Tag="#FFFFFF"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <!-- Tab 4: Pronunciation Dictionary -->
+                                <Grid Visibility="{Binding SettingsTabIdx, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=4}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="260" />
+                                        <ColumnDefinition Width="15" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Add Word Translation" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,0,0,10"/>
+
+                                        <TextBlock Text="Original Word:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewDictOriginal, UpdateSourceTrigger=PropertyChanged}" Background="#1E1E2E" Foreground="#CDD6F4" BorderBrush="#313244" Padding="6" Margin="0,0,0,8"/>
+
+                                        <TextBlock Text="TTS Phonetic Translation:" Foreground="#A6ADC8" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding NewDictPhonetic, UpdateSourceTrigger=PropertyChanged}" Background="#1E1E2E" Foreground="#CDD6F4" BorderBrush="#313244" Padding="6" Margin="0,0,0,12"/>
+
+                                        <Button Content="➕ Add Mapping" Click="AddDictionaryWord_Click" Style="{StaticResource AccentButton}" Height="35"/>
+                                    </StackPanel>
+
+                                    <Grid Grid.Column="2">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="8" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Text="Translations List:" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4"/>
+                                        <ListBox Grid.Row="2" ItemsSource="{Binding PronunciationDictionary}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1.2*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="1.2*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding OriginalWord}" Foreground="#CDD6F4" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="1" Text=" ➔ " Foreground="#89B4FA" Margin="5,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding PhoneticSpeech}" Foreground="#A6E3A1" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="3" Content="❌" Background="Transparent" Margin="10,0,0,0" Padding="2" Click="DeleteDictionaryWord_Click" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Status Bar Footer -->
         <StatusBar Grid.Row="2" Background="Transparent" BorderThickness="0" Margin="0,10,0,0" Padding="0">
             <StatusBarItem Padding="0">
-                <TextBlock Text="GestureFlow Windows WPF v1.0.0 (Phase 1 MVP)" FontSize="11" Foreground="#A6ADC8" />
+                <TextBlock Text="GestureFlow Windows WPF v1.0.0 (Phase 4 AAC Communication Hub)" FontSize="11" Foreground="#A6ADC8" />
             </StatusBarItem>
         </StatusBar>
     </Grid>

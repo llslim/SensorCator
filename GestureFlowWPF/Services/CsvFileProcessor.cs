@@ -336,5 +336,58 @@ namespace GestureFlowWPF.Services
             }
             return differences;
         }
+
+        public List<double[]> GetSlicedDataPoints(int startTimeMs, int endTimeMs)
+        {
+            var list = new List<double[]>();
+            if (CsvData.Count <= 1) return list;
+
+            double startSec = startTimeMs / 1000.0;
+            double endSec = endTimeMs / 1000.0;
+
+            int timeCol = GetColumnIndex("Time");
+            if (timeCol == -1)
+            {
+                ApplyTime();
+                timeCol = GetColumnIndex("Time");
+            }
+
+            int accXCol = GetColumnIndex("acc_x");
+            int accYCol = GetColumnIndex("acc_y");
+            int accZCol = GetColumnIndex("acc_z");
+            int gyroXCol = GetColumnIndex("gyro_x");
+            int gyroYCol = GetColumnIndex("gyro_y");
+            int gyroZCol = GetColumnIndex("gyro_z");
+
+            // Fallback indices if headers are missing
+            if (accXCol == -1) accXCol = 1;
+            if (accYCol == -1) accYCol = 2;
+            if (accZCol == -1) accZCol = 3;
+            if (gyroXCol == -1) gyroXCol = 4;
+            if (gyroYCol == -1) gyroYCol = 5;
+            if (gyroZCol == -1) gyroZCol = 6;
+
+            for (int i = 1; i < CsvData.Count; i++)
+            {
+                var row = CsvData[i];
+                if (timeCol < row.Length && double.TryParse(row[timeCol], out double t))
+                {
+                    if (t >= startSec && t <= endSec)
+                    {
+                        double ax = accXCol < row.Length && double.TryParse(row[accXCol], out double valAx) ? valAx : 0.0;
+                        double ay = accYCol < row.Length && double.TryParse(row[accYCol], out double valAy) ? valAy : 0.0;
+                        double az = accZCol < row.Length && double.TryParse(row[accZCol], out double valAz) ? valAz : 0.0;
+                        
+                        double gx = gyroXCol < row.Length && double.TryParse(row[gyroXCol], out double valGx) ? valGx : 0.0;
+                        double gy = gyroYCol < row.Length && double.TryParse(row[gyroYCol], out double valGy) ? valGy : 0.0;
+                        double gz = gyroZCol < row.Length && double.TryParse(row[gyroZCol], out double valGz) ? valGz : 0.0;
+
+                        list.Add(new double[] { ax, ay, az, gx, gy, gz });
+                    }
+                }
+            }
+
+            return list;
+        }
     }
 }
