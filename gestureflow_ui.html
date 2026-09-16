@@ -1,0 +1,3189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GestureFlow - Adaptive Gesture AAC (Movesense & MediaPipe)</title>
+  <script src="tailwindcss.min.js"></script>
+  <style>
+    body {
+      background-color: #11111B;
+      color: #CDD6F4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #181825;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #313244;
+      border-radius: 3px;
+    }
+    .tile-active:active {
+      transform: scale(0.96);
+    }
+    .pane-transition {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* 180° Screen Flip / Partner Reading Mode */
+    .screen-flipped {
+      transform: rotate(180deg) !important;
+      transform-origin: center center !important;
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      padding-top: 7rem !important;
+      padding-bottom: 1.25rem !important;
+    }
+    /* Markdown Styles for AAC Message Window */
+    .md-render-content blockquote {
+      border-left: 4px solid #89B4FA;
+      padding-left: 1rem;
+      margin: 0.5rem 0;
+      color: #BAC2DE;
+      background: rgba(137, 180, 250, 0.08);
+      border-radius: 0 0.5rem 0.5rem 0;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+      font-style: italic;
+    }
+    .md-render-content ul {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+    }
+    .md-render-content ol {
+      list-style-type: decimal;
+      padding-left: 1.5rem;
+      margin: 0.5rem 0;
+    }
+    .md-render-content li {
+      margin-bottom: 0.25rem;
+    }
+    .md-render-content strong {
+      color: #FAB387;
+      font-weight: 800;
+    }
+    .md-render-content em {
+      color: #A6E3A1;
+      font-style: italic;
+    }
+    .md-render-content del {
+      color: #F38BA8;
+      text-decoration: line-through;
+    }
+    .md-render-content code {
+      background: #181825;
+      color: #F5C2E7;
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.35rem;
+      border: 1px solid #313244;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+    .md-render-content h1, .md-render-content h2, .md-render-content h3 {
+      color: #89B4FA;
+      font-weight: 800;
+      margin: 0.5rem 0 0.25rem 0;
+    }
+
+    /* ========================================================================= */
+    /* WCAG 2.2 TOUCH TARGET ACCESSIBILITY (SC 2.5.8 LEVEL AA & SC 2.5.5 LEVEL AAA) */
+    /* Enforces minimum 44px x 44px touch targets across all interactive elements */
+    /* ========================================================================= */
+    button, 
+    [role="button"],
+    .wcag-touch-target {
+      min-height: 44px;
+      min-width: 44px;
+      touch-action: manipulation;
+    }
+
+    /* Keyboard key touch targets for AAC touchscreen ergonomics */
+    .keyboard-key-btn {
+      min-height: 46px !important;
+      touch-action: manipulation;
+    }
+
+    /* Core Vocabulary and Activity Deck AAC Tiles */
+    .aac-tile-btn {
+      min-height: 48px !important;
+      touch-action: manipulation;
+    }
+
+    /* ========================================================================= */
+    /* WCAG 2.2 FOCUS APPEARANCE (SC 2.4.11 LEVEL AA & SC 2.4.13 LEVEL AAA)     */
+    /* Enforces >= 3:1 non-text contrast with 2px offset on all active controls  */
+    /* ========================================================================= */
+    button:focus-visible,
+    [role="button"]:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2.5px solid #89B4FA !important;
+      outline-offset: 2px !important;
+    }
+    body.light-theme button:focus-visible,
+    body.light-theme [role="button"]:focus-visible,
+    body.light-theme input:focus-visible,
+    body.light-theme select:focus-visible,
+    body.light-theme textarea:focus-visible {
+      outline: 2.5px solid #1554C0 !important;
+      outline-offset: 2px !important;
+    }
+    /* RESPONSIVE OFF-SCREEN PANES FOR SMALL SCREENS (< 960px)                   */
+    /* Pane 1 (Message Window) takes 100% full view height and 100% view width.  */
+    /* Pane 2 is off-screen RIGHT (+105% translateX slide-in drawer).            */
+    /* Pane 3 is off-screen BOTTOM (+105% translateY slide-in drawer).           */
+    /* ========================================================================= */
+    @media (max-width: 960px) {
+      body {
+        padding: 0 !important;
+        margin: 0 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        width: 100vw !important;
+        overflow: hidden !important;
+        position: relative !important;
+      }
+      .desktop-header {
+        display: none !important;
+      }
+      #top-workspace {
+        position: relative !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        flex: 1 1 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      #pane-1 {
+        width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        border-radius: 0 !important;
+        border: none !important;
+        padding: 0.6rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-sizing: border-box !important;
+      }
+      #pane1-width-badge {
+        display: none !important;
+      }
+      #message-display-box {
+        flex: 1 1 0% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+      }
+
+      /* Pane 2: Off-screen Right Drawer */
+      #pane-2 {
+        position: fixed !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 85% !important;
+        max-width: 400px !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        z-index: 45 !important;
+        box-shadow: -10px 0 35px rgba(0, 0, 0, 0.7) !important;
+        border-radius: 1.5rem 0 0 1.5rem !important;
+        transform: translateX(105%);
+        transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
+      }
+      #pane-2.mobile-open {
+        transform: translateX(0) !important;
+      }
+
+      /* Pane 3: Off-screen Bottom Drawer */
+      #pane-3 {
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 52vh !important;
+        min-height: 300px !important;
+        z-index: 45 !important;
+        box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.7) !important;
+        border-radius: 1.5rem 1.5rem 0 0 !important;
+        margin-top: 0 !important;
+        transform: translateY(105%);
+        transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1) !important;
+      }
+      #pane-3.mobile-open {
+        transform: translateY(0) !important;
+      }
+    }
+
+    /* Fullscreen / 100% View Height Mode (available on desktop & toggle) */
+    body.full-view-mode {
+      padding: 0 !important;
+    }
+    body.full-view-mode .desktop-header {
+      display: none !important;
+    }
+    body.full-view-mode #top-workspace {
+      width: 100vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      flex: 1 1 100% !important;
+    }
+    body.full-view-mode #pane-1 {
+      width: 100vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      border-radius: 0 !important;
+      border: none !important;
+      padding: 0.75rem !important;
+    }
+    body.full-view-mode #message-display-box {
+      flex: 1 1 0% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+    }
+    body.full-view-mode #pane-2:not(.mobile-open) {
+      display: none !important;
+    }
+    body.full-view-mode #pane-3:not(.mobile-open) {
+      display: none !important;
+    }
+
+    /* ========================================================================= */
+    /* LIGHT THEME STYLES (Catppuccin Latte & Accessible Contrast)              */
+    /* ========================================================================= */
+    body.light-theme {
+      background-color: #EFF1F5 !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme .desktop-header,
+    body.light-theme #pane-1,
+    body.light-theme #pane-2,
+    body.light-theme #pane-3 {
+      background-color: #FFFFFF !important;
+      border-color: #DCE0E8 !important;
+      color: #4C4F69 !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+    }
+    body.light-theme .bg-\[\#181825\] {
+      background-color: #F8F9FC !important;
+      border-color: #DCE0E8 !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme .bg-\[\#1E1E2E\] {
+      background-color: #EEF1F7 !important;
+      border-color: #DCE0E8 !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme .bg-\[\#11111B\] {
+      background-color: #FFFFFF !important;
+      border-color: #DCE0E8 !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme .bg-\[\#252538\] {
+      background-color: #E6E9EF !important;
+      border-color: #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme .bg-\[\#313244\],
+    body.light-theme .bg-\[\#313244\]\/80,
+    body.light-theme .bg-\[\#313244\]\/60 {
+      background-color: #E6E9EF !important;
+      border-color: #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme .border-\[\#313244\],
+    body.light-theme .border-\[\#313244\]\/60,
+    body.light-theme .border-\[\#313244\]\/40,
+    body.light-theme .border-\[\#313244\]\/80 {
+      border-color: #CCD0DA !important;
+    }
+    body.light-theme .hover\:bg-\[\#45475A\]:hover,
+    body.light-theme .hover\:bg-\[\#313244\]:hover,
+    body.light-theme .hover\:bg-\[\#252538\]:hover {
+      background-color: #DCE0E8 !important;
+      color: #1E66F5 !important;
+    }
+    body.light-theme .hover\:text-white:hover {
+      color: #1E66F5 !important;
+    }
+    body.light-theme .text-\[\#CDD6F4\] {
+      color: #4C4F69 !important;
+    }
+    body.light-theme .text-\[\#A6ADC8\] {
+      color: #5C5F77 !important;
+    }
+    body.light-theme #message-display-box {
+      background-color: #FAFBFE !important;
+      border-color: #CCD0DA !important;
+      color: #4C4F69 !important;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    }
+    body.light-theme #message-overlay-controls {
+      background-color: rgba(255, 255, 255, 0.95) !important;
+      border-color: #CCD0DA !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+      --tw-ring-color: rgba(0, 0, 0, 0.08) !important;
+    }
+    body.light-theme #overlay-decks-btn {
+      background-color: #EFF1F5 !important;
+      border-color: #CCD0DA !important;
+      color: #1E66F5 !important;
+    }
+    body.light-theme #overlay-decks-btn:hover {
+      background-color: #E6E9EF !important;
+    }
+    body.light-theme #overlay-clear-btn {
+      background-color: #FFF0F2 !important;
+      border-color: #FFCCD2 !important;
+      color: #D20F39 !important;
+    }
+    body.light-theme #pane1-bottom-status {
+      background-color: #F8F9FC !important;
+      border-color: #DCE0E8 !important;
+      color: #5C5F77 !important;
+    }
+
+    /* ALL BUTTONS IN LIGHT THEME */
+    /* Settings Buttons (Desktop and Mobile) */
+    body.light-theme button[onclick*="openSettingsModal"] {
+      background-color: #E6E9EF !important;
+      border: 1px solid #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme button[onclick*="openSettingsModal"]:hover {
+      background-color: #DCE0E8 !important;
+      color: #1E66F5 !important;
+    }
+
+    /* Theme & 100% Height Buttons */
+    body.light-theme #theme-toggle-btn,
+    body.light-theme #mobile-theme-toggle-btn,
+    body.light-theme #fullview-toggle-btn:not(.bg-\[\#89B4FA\]) {
+      background-color: #E6E9EF !important;
+      border: 1px solid #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme #theme-toggle-btn:hover,
+    body.light-theme #mobile-theme-toggle-btn:hover,
+    body.light-theme #fullview-toggle-btn:hover {
+      background-color: #DCE0E8 !important;
+      color: #1E66F5 !important;
+    }
+
+    /* Keyboard Keys & Space Bar */
+    body.light-theme .keyboard-key-btn {
+      background-color: #FFFFFF !important;
+      border: 1px solid #CCD0DA !important;
+      color: #4C4F69 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+    }
+    body.light-theme .keyboard-key-btn:hover {
+      background-color: #E6E9EF !important;
+      color: #1E66F5 !important;
+    }
+
+    /* Modal Close & Dismiss Buttons */
+    body.light-theme button[onclick*="close"] {
+      background-color: #E6E9EF !important;
+      border: 1px solid #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme button[onclick*="close"]:hover {
+      background-color: #FFCCD2 !important;
+      color: #D20F39 !important;
+    }
+
+    /* Drawer Toggle Buttons */
+    body.light-theme button[onclick*="togglePane2"]:not(.bg-\[\#89B4FA\]),
+    body.light-theme button[onclick*="togglePane3"]:not(.bg-\[\#89B4FA\]) {
+      background-color: #E6E9EF !important;
+      border: 1px solid #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+
+    /* Core Cog Button */
+    body.light-theme #core-cog-btn {
+      background-color: #E6E9EF !important;
+      border: 1px solid #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+
+    /* Inputs, Selects & Textareas */
+    body.light-theme input[type="text"],
+    body.light-theme textarea,
+    body.light-theme select {
+      background-color: #FFFFFF !important;
+      border-color: #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+
+    /* Dropdowns */
+    body.light-theme #conv-dropdown-menu,
+    body.light-theme #core-cog-dropdown {
+      background-color: #FFFFFF !important;
+      border-color: #CCD0DA !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Modals */
+    body.light-theme #settings-modal > div,
+    body.light-theme #add-core-category-modal > div,
+    body.light-theme #add-core-item-modal > div,
+    body.light-theme #add-activity-deck-modal > div,
+    body.light-theme #add-activity-item-modal > div,
+    body.light-theme #add-conversation-modal > div {
+      background-color: #FFFFFF !important;
+      border-color: #CCD0DA !important;
+      color: #4C4F69 !important;
+    }
+    body.light-theme #settings-modal .border-b,
+    body.light-theme #settings-modal .border-t {
+      background-color: #F8F9FC !important;
+      border-color: #DCE0E8 !important;
+    }
+    body.light-theme #modal-content-telemetry .bg-\[\#1E1E2E\],
+    body.light-theme #modal-content-voice .bg-\[\#1E1E2E\] {
+      background-color: #F8F9FC !important;
+      border-color: #DCE0E8 !important;
+    }
+    body.light-theme #modal-content-telemetry .bg-\[\#11111B\],
+    body.light-theme #modal-content-voice .bg-\[\#11111B\] {
+      background-color: #FFFFFF !important;
+      border-color: #DCE0E8 !important;
+    }
+
+    /* Modal Navigation Tab Buttons */
+    body.light-theme #modal-tab-telemetry:not(.bg-\[\#89B4FA\]),
+    body.light-theme #modal-tab-voice:not(.bg-\[\#89B4FA\]) {
+      background-color: transparent !important;
+      color: #5C5F77 !important;
+    }
+    body.light-theme #modal-tab-telemetry.bg-\[\#89B4FA\],
+    body.light-theme #modal-tab-voice.bg-\[\#89B4FA\] {
+      background-color: #1E66F5 !important;
+      color: #FFFFFF !important;
+    }
+
+    /* Done / Return Button in Modal Footer */
+    body.light-theme button[onclick="closeSettingsModal()"] {
+      background-color: #1E66F5 !important;
+      color: #FFFFFF !important;
+    }
+    body.light-theme button[onclick="closeSettingsModal()"]:hover {
+      background-color: #044FD9 !important;
+    }
+
+    /* ========================================================================= */
+    /* BUTTON DISPLAY MODE STYLES (Symbol Only | Symbol + Label | Label Only)    */
+    /* ========================================================================= */
+    /* Mode: Symbol Only */
+    body[data-button-display="symbol-only"] .btn-label {
+      display: none !important;
+    }
+    body[data-button-display="symbol-only"] .aac-tile-btn,
+    body[data-button-display="symbol-only"] .btn-display-adaptive {
+      justify-content: center !important;
+      text-align: center !important;
+    }
+    body[data-button-display="symbol-only"] .btn-symbol {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      font-size: 1.4rem !important;
+      line-height: 1 !important;
+      margin: auto !important;
+    }
+
+    /* Mode: Label Only */
+    body[data-button-display="label-only"] .btn-symbol {
+      display: none !important;
+    }
+    body[data-button-display="label-only"] .aac-tile-btn,
+    body[data-button-display="label-only"] .btn-display-adaptive {
+      justify-content: center !important;
+      text-align: center !important;
+    }
+    body[data-button-display="label-only"] .btn-label {
+      display: inline-block !important;
+      font-size: 0.92rem !important;
+      font-weight: 800 !important;
+      margin: auto !important;
+      text-align: center !important;
+    }
+  </style>
+</head>
+<body class="bg-[#11111B] text-[#CDD6F4] select-none h-screen w-screen overflow-hidden flex flex-col p-3">
+
+  <!-- Responsive Drawer Backdrop for Small Screens (< 960px) -->
+  <div id="drawer-backdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300"></div>
+
+  <!-- ========================================================================= -->
+  <!-- TOP HEADER SHELL (Status & Settings) -->
+  <!-- ========================================================================= -->
+  <header class="desktop-header bg-[#181825] border border-[#313244] rounded-2xl px-4 py-2.5 mb-2.5 shadow-xl flex items-center justify-between shrink-0">
+    <!-- Brand Info -->
+    <div class="flex items-center gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="app-name-bind text-lg font-black tracking-tight bg-gradient-to-r from-[#89B4FA] via-[#CBA6F7] to-[#F5C2E7] bg-clip-text text-transparent">
+            GestureFlow
+          </h1>
+          <span class="px-2 py-0.5 rounded-full bg-[#89B4FA]/15 border border-[#89B4FA]/30 text-[#89B4FA] text-[10px] font-bold">
+            AAC Desktop • 1250×700
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Movesense & MediaPipe Telemetry Pill -->
+      <!-- Movesense BLE & MediaPipe Status Pill (WCAG 2.2 min 44px) -->
+      <button id="gf-telemetry-badge" onclick="openSettingsModal('telemetry')" class="hidden md:inline-flex items-center gap-2.5 bg-[#1E1E2E] hover:bg-[#252538] border border-[#313244] px-4 py-2.5 rounded-xl min-h-[44px] text-xs font-semibold transition active:scale-95 shadow-sm" title="Movesense BLE & MediaPipe Hand Tracking Status">
+        <span class="relative flex h-2.5 w-2.5">
+          <span id="gf-ble-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#A6E3A1] opacity-75"></span>
+          <span id="gf-ble-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#A6E3A1]"></span>
+        </span>
+        <span id="gf-ble-status" class="text-[#CDD6F4] text-xs font-semibold">Movesense 52Hz</span>
+        <span class="text-[#313244]">|</span>
+        <span id="gf-vision-status" class="text-[#A6E3A1] text-xs font-semibold">MediaPipe Active</span>
+      </button>
+
+      <!-- Theme Toggle Quick Button (WCAG 2.2 Compliant min 44px) -->
+      <button id="theme-toggle-btn" onclick="toggleTheme()" class="px-3.5 py-2.5 bg-[#1E1E2E] hover:bg-[#252538] border border-[#313244] text-[#CDD6F4] font-bold text-xs rounded-xl min-h-[44px] min-w-[44px] flex items-center gap-1.5 transition active:scale-95 shadow-sm" title="Toggle Light / Dark Theme">
+        <span id="theme-toggle-icon" class="text-sm">☀️</span>
+        <span class="hidden lg:inline text-xs">Theme</span>
+      </button>
+
+      <button onclick="openSettingsModal('voice')" class="px-4 py-2.5 bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] hover:text-white font-bold text-xs rounded-xl min-h-[44px] min-w-[44px] flex items-center gap-2 transition active:scale-95 shadow-sm">
+        <span class="text-sm">⚙️</span>
+        <span>Settings</span>
+      </button>
+    </div>
+  </header>
+
+
+  <!-- ========================================================================= -->
+  <!-- MAIN WORKSPACE: DYNAMIC 2-COLUMN SPLIT (Panes 1 & 2) -->
+  <!-- ========================================================================= -->
+  <main id="top-workspace" class="flex-1 flex gap-3 min-h-0 pane-transition">
+
+    <!-- ======================================================================= -->
+    <!-- PANE 1: MESSAGE WINDOW (70% width when Pane 2 shown, 100% when hidden) -->
+    <!-- In small screens (< 960px): 100% view height & 100% view width -->
+    <!-- ======================================================================= -->
+    <section id="pane-1" class="w-[70%] bg-[#1E1E2E] border border-[#313244] rounded-2xl p-4 flex flex-col gap-3 shadow-xl pane-transition overflow-hidden">
+      
+      <!-- Pane 1 Header (Clean Top Bar: Conversation Pill, Fullscreen Toggle & Settings) -->
+      <div class="flex items-center justify-between shrink-0 pb-2.5 border-b border-[#313244]/60 min-h-[50px]">
+        <div class="flex items-center gap-2.5">
+          <!-- Mobile Brand Title (No Logo) -->
+          <div class="flex md:hidden items-center mr-1">
+            <span class="app-name-bind text-xs font-black bg-gradient-to-r from-[#89B4FA] to-[#CBA6F7] bg-clip-text text-transparent">GestureFlow</span>
+          </div>
+
+          <!-- Desktop Pane 1 Title -->
+          <span class="hidden md:flex text-xs font-extrabold uppercase tracking-wider text-[#89B4FA] items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-[#89B4FA]"></span>
+            Pane 1: Message Window
+          </span>
+
+          <!-- Active Conversation Dropdown Selector (Sorted by Recent Visited) -->
+          <div id="conv-dropdown-wrapper" class="relative">
+            <button id="conv-dropdown-btn" onclick="toggleConvDropdown(event)" class="px-3.5 py-2 rounded-xl bg-[#89B4FA]/15 hover:bg-[#89B4FA]/25 border border-[#89B4FA]/40 text-[#89B4FA] text-xs font-bold flex items-center gap-2 min-h-[44px] transition active:scale-95 shadow-sm" title="Switch conversation (Sorted by recently visited)">
+              <span class="text-sm">💬</span>
+              <span id="active-conv-title" class="font-extrabold max-w-[130px] sm:max-w-[200px] truncate">Conversation 1</span>
+              <span id="conv-dropdown-chevron" class="text-[10px] text-[#89B4FA]/80 transition-transform duration-200">▼</span>
+            </button>
+
+            <!-- Dropdown Menu Popover -->
+            <div id="conv-dropdown-menu" class="absolute left-0 top-12 w-72 sm:w-84 bg-[#181825] border border-[#313244] rounded-2xl shadow-2xl p-2.5 flex flex-col gap-1.5 z-40 hidden animate-fadeIn">
+              <div class="flex items-center justify-between px-2.5 py-1 border-b border-[#313244]/60">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[#A6ADC8]">Switch Conversation</span>
+                <span class="text-[9px] text-[#89B4FA] font-bold bg-[#89B4FA]/10 border border-[#89B4FA]/20 px-2 py-0.5 rounded-full">Recent Visited</span>
+              </div>
+              
+              <!-- Dynamic List of Conversations sorted by recent visited -->
+              <div id="conv-dropdown-items" class="max-h-64 overflow-y-auto custom-scrollbar flex flex-col gap-1.5 py-1">
+                <!-- Injected dynamically by renderConvDropdownItems() -->
+              </div>
+
+              <!-- Quick Action Footer: + Create / Load -->
+              <div class="pt-1.5 border-t border-[#313244]/60">
+                <button onclick="handleDropdownNewConv()" class="w-full px-3 py-2 text-xs font-bold text-[#89B4FA] hover:bg-[#89B4FA]/15 rounded-xl transition flex items-center justify-center gap-1.5 min-h-[44px] active:scale-95">
+                  <span class="text-sm">+</span> <span>Create / Load New Conversation</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <span id="pane1-width-badge" class="hidden md:inline-flex items-center px-2.5 py-1.5 rounded-lg bg-[#313244] text-[#A6ADC8] text-[10px] font-bold">
+            70% Width
+          </span>
+
+          <!-- 100% View Height Toggle (WCAG 2.2 Compliant min 44px, Available on Mobile & Desktop) -->
+          <button id="fullview-toggle-btn" onclick="toggleFullViewHeight()" class="inline-flex items-center justify-center gap-1.5 text-xs px-3 sm:px-3.5 py-2.5 min-h-[44px] min-w-[44px] bg-[#252538] hover:bg-[#313244] border border-[#313244] rounded-xl text-[#CDD6F4] font-semibold transition active:scale-95" title="Toggle 100% Full View Height">
+            <span id="fullview-toggle-icon" class="text-sm">⛶</span>
+            <span id="fullview-toggle-text" class="hidden sm:inline">100% Height</span>
+          </button>
+
+          <!-- Screen Flip Toggle (180° Partner Reading Mode, WCAG 2.2 Compliant min 44px) -->
+          <button id="screen-flip-btn" onclick="toggleScreenFlip()" class="inline-flex items-center justify-center gap-1.5 text-xs px-3 sm:px-3.5 py-2.5 min-h-[44px] min-w-[44px] bg-[#252538] hover:bg-[#313244] border border-[#313244] rounded-xl text-[#CDD6F4] font-semibold transition active:scale-95 shadow-sm" title="Flip Screen 180° for Partner Reading (Alt+F)" aria-label="Flip Screen 180 degrees for Partner Reading">
+            <span id="screen-flip-icon" class="text-sm">🔄</span>
+            <span id="screen-flip-text" class="hidden sm:inline">Flip</span>
+          </button>
+        </div>
+
+        <!-- Right: Mobile & Quick Settings Trigger (WCAG 2.2 Compliant min 44px) -->
+        <div class="flex items-center gap-2">
+          <button id="mobile-theme-toggle-btn" onclick="toggleTheme()" class="px-3 py-2.5 min-h-[44px] min-w-[44px] bg-[#252538] hover:bg-[#313244] border border-[#313244] text-[#CDD6F4] rounded-xl text-xs font-bold transition flex items-center justify-center active:scale-95 shadow-sm" title="Toggle Light / Dark Theme">
+            <span id="mobile-theme-toggle-icon" class="text-sm">☀️</span>
+          </button>
+          <button onclick="openSettingsModal('voice')" class="px-3.5 py-2.5 min-h-[44px] min-w-[44px] bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] hover:text-white rounded-xl text-xs font-bold transition flex items-center gap-2 active:scale-95 shadow-sm" title="Open Settings Modal">
+            <span class="text-sm">⚙️</span>
+            <span class="hidden sm:inline">Settings</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Message Output Box with Overlaid Action Controls at Bottom -->
+      <div class="relative flex-1 min-h-0 flex flex-col">
+        <!-- Message Display Surface (Click / tap to open bottom drawer) -->
+        <div id="message-display-box" onclick="handleMessageWindowClick(event)" class="flex-1 bg-[#11111B] border border-[#313244] rounded-2xl p-4 sm:p-5 pb-28 text-2xl font-bold text-[#CDD6F4] overflow-y-auto custom-scrollbar flex flex-wrap items-center content-start gap-2.5 shadow-inner cursor-pointer" title="Click or tap to open keyboard / input drawer">
+          <!-- Dynamically injected chips for active conversation -->
+        </div>
+
+        <!-- OVERLAID ACTION CONTROLS ON BOTTOM OF MESSAGE WINDOW (Spread Full Width with Space: Decks, SPEAK, Clear) -->
+        <div id="message-overlay-controls" class="absolute bottom-3 sm:bottom-4 left-3 right-3 sm:left-4 sm:right-4 z-20 flex items-center justify-between gap-2.5 sm:gap-4 bg-[#181825]/95 backdrop-blur-md border border-[#313244] p-2 sm:p-2.5 rounded-2xl shadow-2xl ring-1 ring-black/50">
+          <!-- 1. Activity Decks Button (Replaces Keyboard Button) -->
+          <button id="overlay-decks-btn" onclick="handleOverlayDecksToggle()" class="btn-display-adaptive flex-1 min-w-0 px-3 sm:px-4 py-3 min-h-[48px] rounded-xl bg-[#252538] hover:bg-[#313244] border border-[#313244] text-[#CDD6F4] hover:text-[#89B4FA] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 active:scale-95 shadow-sm" title="Open Activity Decks & Vocabulary">
+            <span class="btn-symbol text-base sm:text-lg shrink-0">📂</span>
+            <span class="btn-label truncate font-black">Decks</span>
+          </button>
+
+          <!-- 2. SPEAK Button (Center Hero Trigger) -->
+          <button id="overlay-speak-btn" onclick="speakActiveMessage()" class="btn-display-adaptive flex-[1.4] sm:flex-[1.5] min-w-0 px-4 sm:px-6 py-3 min-h-[48px] rounded-xl bg-gradient-to-r from-[#89B4FA] via-[#94B8FA] to-[#B4BEFE] hover:brightness-110 text-[#11111B] font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-[#89B4FA]/30" title="Speak active message (Enter or Pinch gesture)">
+            <span class="btn-symbol text-base sm:text-lg shrink-0">🔊</span>
+            <span class="btn-label tracking-wide font-black">SPEAK</span>
+            <span class="btn-label hidden md:inline text-[11px] font-bold text-[#11111B]/80">(Enter/Pinch)</span>
+          </button>
+
+          <!-- 3. Clear Button -->
+          <button id="overlay-clear-btn" onclick="clearCurrentConversation()" class="btn-display-adaptive flex-1 min-w-0 px-3 sm:px-4 py-3 min-h-[48px] rounded-xl bg-[#313244]/80 hover:bg-[#F38BA8]/20 border border-[#313244] hover:border-[#F38BA8]/40 text-[#F38BA8] font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 active:scale-95 shadow-sm" title="Clear conversation (Esc)">
+            <span class="btn-symbol text-base sm:text-lg shrink-0">🗑️</span>
+            <span class="btn-label font-black">Clear</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Quick Info in Pane 1 (WCAG 2.2 Compliant buttons: min-h-[44px]) -->
+      <div id="pane1-bottom-status" class="flex items-center justify-between shrink-0 px-3 py-2 text-xs text-[#A6ADC8] bg-[#181825] rounded-xl border border-[#313244]">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <span>Voice: <strong class="text-[#89B4FA]">David (US)</strong></span>
+          <span class="hidden sm:inline">•</span>
+          <span class="hidden sm:inline">Input: <strong id="pane3-mode-status" class="text-[#A6E3A1]">Keyboard Mode</strong> in Pane 3</span>
+        </div>
+        <!-- Desktop Drawer Navigation Hints -->
+        <div class="hidden md:flex items-center gap-2">
+          <span class="text-xs">Multi-draft active • Switch conversations anytime in Pane 2</span>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ======================================================================= -->
+    <!-- PANE 2: ACTIVITY DECKS & CONVERSATIONS (30% Width when shown) -->
+    <!-- Core has been moved to Pane 3! Pane 2 now has: 1) Activity  2) Conversations -->
+    <!-- ======================================================================= -->
+    <aside id="pane-2" class="w-[30%] bg-[#1E1E2E] border border-[#313244] rounded-2xl p-4 flex flex-col gap-3 shadow-xl pane-transition overflow-hidden">
+      
+      <!-- Pane 2 Header with 2 Tabs: Activity & Conversations -->
+      <div class="flex items-center justify-between shrink-0 pb-2 border-b border-[#313244]/60">
+        <!-- 2 Tabs Switcher (WCAG 2.2 Compliant min 44px) -->
+        <div class="flex bg-[#11111B] p-1 rounded-2xl border border-[#313244] text-xs font-bold">
+          <button onclick="switchPane2Tab('activity')" id="pane2-tab-activity" class="px-4 py-2.5 min-h-[44px] rounded-xl bg-[#89B4FA] text-[#11111B] transition flex items-center gap-1.5 active:scale-95 shadow-sm">
+            <span class="text-sm">📂</span>
+            <span>Activity Decks</span>
+          </button>
+          <button onclick="switchPane2Tab('conversations')" id="pane2-tab-conversations" class="px-4 py-2.5 min-h-[44px] rounded-xl text-[#A6ADC8] hover:text-[#CDD6F4] transition flex items-center gap-1.5 active:scale-95">
+            <span class="text-sm">💬</span>
+            <span>Conversations</span>
+            <span id="conv-count-badge" class="px-2 py-0.5 rounded-full bg-[#89B4FA]/20 text-[#89B4FA] text-[10px] font-bold">3</span>
+          </button>
+        </div>
+
+        <!-- Collapse Pane 2 Button (WCAG 2.2 Compliant 44x44px target) -->
+        <button onclick="togglePane2()" title="Hide Pane 2 (expand Pane 1 to 100%)" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95 shadow-sm">
+          ▶
+        </button>
+      </div>
+
+
+      <!-- TAB 1: ACTIVITY DECKS (Pain Scale, Medical Locations, Meals & Comfort) -->
+      <div id="pane2-view-activity" class="pane2-content-view flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3">
+        
+        <!-- Activity Deck Action Bar (WCAG 2.2 Compliant buttons) -->
+        <div class="flex items-center justify-between bg-[#181825] p-3 rounded-2xl border border-[#313244] shrink-0">
+          <div>
+            <span class="text-xs font-bold text-[#CDD6F4] block">Activity Decks</span>
+            <span class="text-[11px] text-[#A6ADC8]">Contextual AAC Quick Boards</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="openAddActivityItemModal()" class="px-3.5 py-2.5 min-h-[44px] bg-[#89B4FA]/20 hover:bg-[#89B4FA]/30 border border-[#89B4FA]/40 text-[#89B4FA] rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm">
+              <span class="text-sm">+</span> <span>Add Item</span>
+            </button>
+            <button onclick="openAddActivityDeckModal()" class="px-3.5 py-2.5 min-h-[44px] bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-sm">
+              <span class="text-sm">+</span> <span>Add Deck</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Activity Decks Container -->
+        <div id="activity-decks-container" class="flex flex-col gap-3">
+          <!-- Dynamically populated by renderActivityDecks() -->
+        </div>
+
+      </div>
+
+
+      <!-- TAB 2: CONVERSATIONS (Starts with 3 by default + History Log) -->
+      <div id="pane2-view-conversations" class="pane2-content-view flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-3 hidden">
+        
+        <!-- Multi-Draft Conversations Switcher -->
+        <div class="bg-[#181825] p-3.5 rounded-2xl border border-[#313244] flex flex-col gap-2.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-xs font-bold text-[#CDD6F4] block">Multi-Draft Conversations</span>
+              <span class="text-[11px] text-[#A6ADC8]">Switch thoughts without erasing messages</span>
+            </div>
+            <!-- Add Conversation Button (WCAG 2.2 Compliant min 44px) -->
+            <button onclick="openAddConversationModal()" class="px-4 py-2.5 min-h-[44px] bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black rounded-xl shadow flex items-center gap-1.5 transition active:scale-95">
+              <span class="text-sm">+</span> <span>Add</span>
+            </button>
+          </div>
+
+          <!-- List of Conversations -->
+          <div id="conversations-list" class="flex flex-col gap-1.5">
+            <!-- Dynamically rendered -->
+          </div>
+        </div>
+
+        <!-- Spoken Utterance Log -->
+        <div class="flex-1 bg-[#181825] p-3.5 rounded-2xl border border-[#313244] flex flex-col gap-2 min-h-[160px]">
+          <div class="flex items-center justify-between shrink-0">
+            <span class="text-xs font-bold text-[#A6ADC8] uppercase tracking-wider">Spoken Utterance Log</span>
+            <button onclick="clearHistoryLog()" class="min-h-[44px] px-3 py-1.5 text-xs text-[#F38BA8] hover:bg-[#F38BA8]/10 rounded-lg font-bold transition">Clear Log</button>
+          </div>
+
+          <div id="history-log-list" class="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+            <!-- Dynamically rendered -->
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+
+  </main>
+
+
+  <!-- ========================================================================= -->
+  <!-- PANE 3: TOGGLEABLE INPUT ZONE (Bottom 30% Height • 100% Width) -->
+  <!-- TOGGLES BETWEEN: 1) Predictive Keyboard   2) Core Vocabulary Board -->
+  <!-- ========================================================================= -->
+  <section id="pane-3" class="w-full h-[30%] bg-[#1E1E2E] border border-[#313244] rounded-2xl p-3 shadow-2xl pane-transition flex flex-col gap-2 shrink-0 mt-2.5">
+    
+    <!-- Pane 3 Header: Single Toggle Button (Keyboard <-> Core) + Core Cog Dropdown / Keyboard Predictions (WCAG 2.2 min 44px) -->
+    <div class="flex items-center justify-between shrink-0 pb-1">
+      
+      <!-- Left: Single Toggle Button + Mode specific tools -->
+      <div class="flex items-center gap-2.5">
+        <!-- Single Toggle Button between Predictive Keyboard & Core Board (WCAG 2.2 Compliant) -->
+        <button id="pane3-mode-toggle-btn" onclick="togglePane3Mode()" class="px-4 py-2.5 min-h-[44px] rounded-xl bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black shadow transition flex items-center gap-2 active:scale-95">
+          <span id="pane3-toggle-icon" class="text-sm">🗣️</span>
+          <span id="pane3-toggle-text">Switch to Core Board</span>
+        </button>
+
+        <!-- Current Active Mode Indicator Badge -->
+        <span id="pane3-mode-pill" class="px-3 py-2 min-h-[44px] rounded-xl bg-[#252538] border border-[#313244] text-[#89B4FA] text-xs font-bold flex items-center gap-2">
+          <span id="pane3-mode-pill-dot" class="w-2.5 h-2.5 rounded-full bg-[#89B4FA]"></span>
+          <span id="pane3-mode-pill-text">Keyboard Mode</span>
+        </span>
+
+        <!-- Settings Cog Dropdown Menu (VISIBLE ONLY IN CORE MODE) (WCAG 2.2: 44x44px target) -->
+        <div id="core-settings-dropdown-wrapper" class="relative hidden">
+          <button id="core-cog-btn" onclick="toggleCoreCogDropdown(event)" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#252538] hover:bg-[#313244] border border-[#313244] text-[#CDD6F4] flex items-center justify-center text-base font-bold transition shadow active:scale-95" title="Core Board Actions">
+            ⚙️
+          </button>
+
+          <!-- Dropdown Menu -->
+          <div id="core-cog-dropdown" class="absolute left-0 top-12 w-56 bg-[#181825] border border-[#313244] rounded-2xl shadow-2xl p-2 flex flex-col gap-1.5 z-40 hidden animate-fadeIn">
+            <div class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#A6ADC8]/60 border-b border-[#313244]/40">
+              Core Board Options
+            </div>
+            <button onclick="handleCoreDropdownAction('item')" class="w-full px-3.5 py-3 min-h-[44px] text-left text-xs font-bold text-[#CDD6F4] hover:bg-[#89B4FA]/20 hover:text-[#89B4FA] rounded-xl transition flex items-center gap-2 active:scale-95">
+              <span class="text-sm">🔤</span>
+              <span>+ Add Word / Tile</span>
+            </button>
+            <button onclick="handleCoreDropdownAction('category')" class="w-full px-3.5 py-3 min-h-[44px] text-left text-xs font-bold text-[#CDD6F4] hover:bg-[#FAB387]/20 hover:text-[#FAB387] rounded-xl transition flex items-center gap-2 active:scale-95">
+              <span class="text-sm">🗂️</span>
+              <span>+ Add Category</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Prediction Pills (Visible only in Keyboard Mode, WCAG 2.2 min 44px touch targets) -->
+        <div id="keyboard-prediction-pills" class="hidden sm:flex gap-2 text-xs font-bold pl-1">
+          <button onclick="appendChip('please', '#F9E2AF')" class="px-4 py-2 min-h-[44px] bg-[#89B4FA]/20 border border-[#89B4FA]/40 text-[#89B4FA] rounded-xl hover:bg-[#89B4FA]/30 transition active:scale-95 flex items-center justify-center">1. please</button>
+          <button onclick="appendChip('now', '#CDD6F4')" class="px-4 py-2 min-h-[44px] bg-[#252538] border border-[#313244] text-[#CDD6F4] rounded-xl hover:bg-[#313244] transition active:scale-95 flex items-center justify-center">2. now</button>
+          <button onclick="appendChip('today', '#CDD6F4')" class="px-4 py-2 min-h-[44px] bg-[#252538] border border-[#313244] text-[#CDD6F4] rounded-xl hover:bg-[#313244] transition active:scale-95 flex items-center justify-center">3. today</button>
+          <button onclick="appendChip('thanks', '#CBA6F7')" class="px-4 py-2 min-h-[44px] bg-[#252538] border border-[#313244] text-[#CDD6F4] rounded-xl hover:bg-[#313244] transition active:scale-95 flex items-center justify-center">4. thanks</button>
+        </div>
+      </div>
+
+      <!-- Right: Hide Pane 3 Button (WCAG 2.2 Compliant min 44px) -->
+      <button onclick="togglePane3()" class="text-xs px-3.5 py-2.5 min-h-[44px] bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] rounded-xl font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm">
+        <span class="text-xs">▼</span> <span>Hide Panel</span>
+      </button>
+    </div>
+
+
+    <!-- ======================================================================= -->
+    <!-- VIEW A: PREDICTIVE TOUCH KEYBOARD (Inside Pane 3) -->
+    <!-- WCAG 2.2 Touch Compliant Keys (min-height: 46px per key) -->
+    <!-- ======================================================================= -->
+    <div id="pane3-view-keyboard" class="flex-1 flex flex-col justify-between gap-1.5 py-1">
+      <div class="grid grid-cols-10 gap-1.5 text-center font-bold text-sm min-h-[46px] flex-1">
+        <button onclick="typeChar('Q')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">Q</button>
+        <button onclick="typeChar('W')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">W</button>
+        <button onclick="typeChar('E')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">E</button>
+        <button onclick="typeChar('R')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">R</button>
+        <button onclick="typeChar('T')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">T</button>
+        <button onclick="typeChar('Y')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">Y</button>
+        <button onclick="typeChar('U')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">U</button>
+        <button onclick="typeChar('I')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">I</button>
+        <button onclick="typeChar('O')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">O</button>
+        <button onclick="typeChar('P')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">P</button>
+      </div>
+      <div class="grid grid-cols-9 gap-1.5 text-center font-bold text-sm min-h-[46px] flex-1 px-3 sm:px-4">
+        <button onclick="typeChar('A')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">A</button>
+        <button onclick="typeChar('S')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">S</button>
+        <button onclick="typeChar('D')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">D</button>
+        <button onclick="typeChar('F')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">F</button>
+        <button onclick="typeChar('G')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">G</button>
+        <button onclick="typeChar('H')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">H</button>
+        <button onclick="typeChar('J')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">J</button>
+        <button onclick="typeChar('K')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">K</button>
+        <button onclick="typeChar('L')" class="keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">L</button>
+      </div>
+      <div class="grid grid-cols-12 gap-1.5 text-center font-bold text-sm min-h-[46px] flex-1">
+        <button onclick="typeChar('Z')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">Z</button>
+        <button onclick="typeChar('X')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">X</button>
+        <button onclick="typeChar('C')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">C</button>
+        <button onclick="typeChar('V')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">V</button>
+        <button onclick="typeChar('B')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">B</button>
+        <button onclick="typeChar('N')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">N</button>
+        <button onclick="typeChar('M')" class="col-span-1 keyboard-key-btn bg-[#252538] hover:bg-[#313244] rounded-xl flex items-center justify-center transition active:scale-95 text-sm sm:text-base font-bold shadow-sm">M</button>
+        <button onclick="typeChar(' ')" class="col-span-3 keyboard-key-btn bg-[#313244] hover:bg-[#45475A] rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm transition active:scale-95 shadow-sm">Space</button>
+        <button onclick="backspaceWord()" class="col-span-2 keyboard-key-btn btn-display-adaptive bg-[#F38BA8]/20 hover:bg-[#F38BA8]/30 text-[#F38BA8] rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm transition active:scale-95 shadow-sm gap-1"><span class="btn-symbol">⌫</span> <span class="btn-label">Del</span></button>
+      </div>
+    </div>
+
+
+    <!-- ======================================================================= -->
+    <!-- VIEW B: CORE VOCABULARY BOARD (Spans 100% width across Pane 3) -->
+    <!-- Full Horizontal Fitzgerald Key Layout: Pronouns, Verbs, Nouns, Modifiers, Social -->
+    <!-- ======================================================================= -->
+    <div id="pane3-view-core" class="flex-1 flex flex-col min-h-0 hidden">
+      <!-- Core Categories Scrollable Row -->
+      <div id="core-categories-container" class="flex-1 flex gap-2.5 overflow-x-auto custom-scrollbar pb-1">
+        <!-- Dynamically rendered by renderCoreBoard() -->
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- ========================================================================= -->
+  <!-- DEDICATED SETTINGS & HARDWARE CALIBRATION MODAL -->
+  <!-- ========================================================================= -->
+  <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden transition-opacity duration-200">
+    <div class="bg-[#181825] border border-[#313244] rounded-3xl w-full max-w-[1100px] max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#313244] bg-[#1E1E2E]">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-[#89B4FA]/20 border border-[#89B4FA]/40 flex items-center justify-center text-[#89B4FA] text-lg font-bold">
+            ⚙️
+          </div>
+          <div>
+            <h3 id="settings-modal-app-title" class="text-base font-bold text-[#CDD6F4]"><span class="app-name-bind">GestureFlow</span> Settings &amp; Configuration</h3>
+            <p id="settings-modal-app-subtitle" class="text-xs text-[#A6ADC8]">Adaptive AAC • Speech Synthesis • Custom Profiles</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Modal Tab Navigation -->
+          <div class="flex bg-[#11111B] p-1 rounded-xl border border-[#313244] text-xs font-bold">
+            <button onclick="switchModalTab('telemetry')" id="modal-tab-telemetry" class="min-h-[44px] px-4 py-2.5 rounded-lg bg-[#89B4FA] text-[#11111B] shadow transition">
+              📡 Sensor &amp; Camera Studio
+            </button>
+            <button onclick="switchModalTab('voice')" id="modal-tab-voice" class="min-h-[44px] px-4 py-2.5 rounded-lg text-[#A6ADC8] hover:text-[#CDD6F4] transition">
+              🎨 Appearance, Voice &amp; Access
+            </button>
+          </div>
+
+          <!-- Close Modal -->
+          <button onclick="closeSettingsModal()" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95" title="Close Settings">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body Content -->
+      <div class="p-6 overflow-y-auto custom-scrollbar flex-1 bg-[#181825]">
+        
+        <!-- SUB-TAB 1: SENSOR & CAMERA TRIGGER STUDIO -->
+        <div id="modal-content-telemetry" class="modal-tab-view">
+          <div class="grid grid-cols-12 gap-5">
+            <!-- Left: Webcam Landmark Tracking -->
+            <div class="col-span-12 lg:col-span-5 bg-[#1E1E2E] border border-[#313244] rounded-2xl p-4 flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-[#89B4FA]">MediaPipe Hand Landmarks</span>
+                <span class="px-2 py-0.5 rounded bg-[#A6E3A1]/20 text-[#A6E3A1] text-[10px] font-bold">21 Landmarks OK</span>
+              </div>
+              <div class="relative w-full aspect-video bg-[#11111B] border border-[#313244] rounded-xl overflow-hidden flex items-center justify-center">
+                <svg class="w-40 h-40 text-[#89B4FA]" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="50" cy="80" r="3" fill="#CBA6F7"/>
+                  <path d="M50 80 L35 60 L30 45 L25 35" stroke="#89B4FA"/>
+                  <path d="M50 80 L45 55 L42 38 L40 25" stroke="#89B4FA"/>
+                  <path d="M50 80 L55 54 L58 37 L60 23" stroke="#89B4FA"/>
+                  <path d="M50 80 L65 58 L70 42 L75 32" stroke="#89B4FA"/>
+                  <circle cx="25" cy="35" r="2.5" fill="#A6E3A1"/>
+                  <circle cx="40" cy="25" r="2.5" fill="#A6E3A1"/>
+                  <circle cx="60" cy="23" r="2.5" fill="#A6E3A1"/>
+                  <circle cx="75" cy="32" r="2.5" fill="#A6E3A1"/>
+                </svg>
+                <div class="absolute bottom-2 left-2 bg-[#181825]/90 border border-[#313244] px-2 py-0.5 rounded text-[10px] text-[#A6ADC8]">
+                  Trigger: <strong class="text-[#A6E3A1]">Pinch &gt; Speak</strong>
+                </div>
+              </div>
+              <div class="bg-[#252538] p-3 rounded-xl flex flex-col gap-1.5">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-[#A6ADC8]">Pinch Sensitivity Threshold</span>
+                  <span class="text-[#89B4FA] font-mono">15 px</span>
+                </div>
+                <input type="range" min="5" max="40" value="15" class="w-full accent-[#89B4FA]">
+              </div>
+            </div>
+
+            <!-- Right: Movesense 9-DoF Telemetry Charts -->
+            <div class="col-span-12 lg:col-span-7 bg-[#1E1E2E] border border-[#313244] rounded-2xl p-4 flex flex-col gap-3">
+              <span class="text-xs font-bold text-[#F38BA8] uppercase tracking-wider">Movesense 9-DoF Telemetry</span>
+              
+              <!-- Acc -->
+              <div class="bg-[#11111B] border border-[#313244] rounded-xl p-3">
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-bold text-[#F38BA8]">Accelerometer (m/s²)</span>
+                  <span class="font-mono text-[11px] text-[#A6ADC8]">X: +0.22 | Y: -9.81 | Z: +0.34</span>
+                </div>
+                <svg class="w-full h-14 stroke-[#F38BA8]" fill="none" stroke-width="2">
+                  <path d="M0 28 Q 50 8, 100 28 T 200 28 T 300 12 T 400 28 T 500 40 T 600 28" />
+                </svg>
+              </div>
+
+              <!-- Gyro -->
+              <div class="bg-[#11111B] border border-[#313244] rounded-xl p-3">
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-bold text-[#F9E2AF]">Gyroscope (deg/s)</span>
+                  <span class="font-mono text-[11px] text-[#A6ADC8]">Pitch: +4.2° | Roll: -1.5°</span>
+                </div>
+                <svg class="w-full h-14 stroke-[#F9E2AF]" fill="none" stroke-width="2">
+                  <path d="M0 28 Q 60 45, 120 28 T 240 18 T 360 38 T 480 28" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 2: APPEARANCE, VOICE & ACCESS SETTINGS -->
+        <div id="modal-content-voice" class="modal-tab-view hidden flex flex-col gap-6">
+          
+          <!-- Appearance: Theme & Button Display Mode Options -->
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <!-- Theme: Dark / Light Mode -->
+            <div class="col-span-12 md:col-span-5 bg-[#1E1E2E] border border-[#313244] rounded-2xl p-5 flex flex-col justify-between gap-3 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-bold text-[#89B4FA] uppercase tracking-wider block">Theme Mode</span>
+                  <p class="text-[11px] text-[#A6ADC8]">High-contrast Dark or Light display theme</p>
+                </div>
+                <button type="button" onclick="toggleTheme()" class="px-3 py-1.5 rounded-xl bg-[#252538] hover:bg-[#313244] border border-[#313244] text-xs font-bold text-[#CDD6F4] flex items-center gap-1.5 transition active:scale-95">
+                  <span id="theme-modal-badge-icon">☀️</span>
+                  <span id="theme-modal-badge-text">Switch</span>
+                </button>
+              </div>
+
+              <!-- Theme Option Cards -->
+              <div class="grid grid-cols-2 gap-2.5">
+                <button type="button" onclick="setThemeMode('dark')" data-theme="dark" class="theme-option-card flex flex-col items-center justify-center p-3 rounded-xl border border-[#89B4FA] bg-[#89B4FA]/15 ring-1 ring-[#89B4FA] min-h-[48px] transition active:scale-95 text-center shadow-sm">
+                  <span class="text-xl mb-1">🌙</span>
+                  <span class="text-xs font-extrabold text-[#CDD6F4]">Dark Mode</span>
+                  <span class="text-[10px] text-[#A6ADC8]">Mocha Night</span>
+                </button>
+
+                <button type="button" onclick="setThemeMode('light')" data-theme="light" class="theme-option-card flex flex-col items-center justify-center p-3 rounded-xl border border-[#313244] bg-[#11111B] min-h-[48px] transition active:scale-95 text-center shadow-sm">
+                  <span class="text-xl mb-1">☀️</span>
+                  <span class="text-xs font-extrabold text-[#CDD6F4]">Light Mode</span>
+                  <span class="text-[10px] text-[#A6ADC8]">Latte Day</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Button Display Mode: Symbol Only / Symbol + Label / Label Only -->
+            <div class="col-span-12 md:col-span-7 bg-[#1E1E2E] border border-[#313244] rounded-2xl p-5 flex flex-col justify-between gap-3 shadow-sm">
+              <div>
+                <span class="text-xs font-bold text-[#FAB387] uppercase tracking-wider block">Button Display Mode</span>
+                <p class="text-[11px] text-[#A6ADC8]">Configure AAC tiles &amp; buttons to display symbols, labels, or both</p>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <!-- 1. Symbol Only -->
+                <button type="button" onclick="setButtonDisplayMode('symbol-only')" data-btn-mode="symbol-only" class="btn-display-option-card flex flex-col items-center justify-center p-2.5 rounded-xl border border-[#313244] bg-[#11111B] hover:border-[#89B4FA]/60 min-h-[52px] transition active:scale-95 text-center">
+                  <span class="text-xl mb-1">💬</span>
+                  <span class="text-xs font-extrabold text-[#CDD6F4]">Symbol Only</span>
+                  <span class="text-[10px] text-[#A6ADC8]">Icons Only</span>
+                </button>
+
+                <!-- 2. Symbol + Label (Default) -->
+                <button type="button" onclick="setButtonDisplayMode('both')" data-btn-mode="both" class="btn-display-option-card flex flex-col items-center justify-center p-2.5 rounded-xl border border-[#89B4FA] bg-[#89B4FA]/15 ring-1 ring-[#89B4FA] min-h-[52px] transition active:scale-95 text-center">
+                  <span class="text-xl mb-1">🔤 💬</span>
+                  <span class="text-xs font-extrabold text-[#CDD6F4]">Symbol + Label</span>
+                  <span class="text-[10px] text-[#A6ADC8]">Standard (Both)</span>
+                </button>
+
+                <!-- 3. Label Only -->
+                <button type="button" onclick="setButtonDisplayMode('label-only')" data-btn-mode="label-only" class="btn-display-option-card flex flex-col items-center justify-center p-2.5 rounded-xl border border-[#313244] bg-[#11111B] hover:border-[#89B4FA]/60 min-h-[52px] transition active:scale-95 text-center">
+                  <span class="text-xl mb-1">🔤</span>
+                  <span class="text-xs font-extrabold text-[#CDD6F4]">Label Only</span>
+                  <span class="text-[10px] text-[#A6ADC8]">Text Words Only</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Existing Row: Voice Synthesizer & Access Modes -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- TTS Synthesizer -->
+            <div class="bg-[#1E1E2E] border border-[#313244] rounded-2xl p-5 flex flex-col gap-4">
+              <span class="text-xs font-bold text-[#89B4FA] uppercase tracking-wider">TTS Voice Engine</span>
+              <div>
+                <label class="block text-xs font-semibold text-[#A6ADC8] mb-1">Active Voice</label>
+                <select id="voice-select" class="w-full bg-[#11111B] border border-[#313244] rounded-xl p-2.5 text-xs text-[#CDD6F4] font-semibold">
+                  <option value="david">Microsoft David (English - US, Male)</option>
+                  <option value="zira">Microsoft Zira (English - US, Female)</option>
+                  <option value="mark">Microsoft Mark (English - US, Natural)</option>
+                </select>
+              </div>
+              <div>
+                <div class="flex justify-between text-xs font-semibold mb-1">
+                  <span class="text-[#A6ADC8]">Speech Rate</span>
+                  <span id="rate-label" class="text-[#89B4FA] font-mono">1.0x</span>
+                </div>
+                <input type="range" id="rate-slider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateRate(this.value)" class="w-full accent-[#89B4FA]">
+              </div>
+              <button onclick="speakDirect('Testing voice synthesizer output.')" class="min-h-[44px] px-4 py-2.5 bg-[#252538] hover:bg-[#313244] rounded-xl text-xs font-bold text-[#CDD6F4] transition active:scale-95 flex items-center justify-center gap-2">
+                🔊 Test Audio Sample
+              </button>
+            </div>
+
+            <!-- Accessibility Access Modes -->
+            <div class="bg-[#1E1E2E] border border-[#313244] rounded-2xl p-5 flex flex-col gap-3">
+              <span class="text-xs font-bold text-[#A6E3A1] uppercase tracking-wider">Access Modes</span>
+              <div class="flex items-center justify-between p-3 bg-[#11111B] border border-[#313244] rounded-xl">
+                <div>
+                  <div class="font-bold text-xs text-[#CDD6F4]">Dwell Selection (Eye-Gaze / Head Tracker)</div>
+                  <div class="text-[11px] text-[#A6ADC8]">Select automatically when holding pointer steady</div>
+                </div>
+                <input type="checkbox" checked class="accent-[#89B4FA] w-4 h-4 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between p-3 bg-[#11111B] border border-[#313244] rounded-xl">
+                <div>
+                  <div class="font-bold text-xs text-[#CDD6F4]">Row-Column Switch Scanning</div>
+                  <div class="text-[11px] text-[#A6ADC8]">Adaptive scanning for single/dual switch access</div>
+                </div>
+                <input type="checkbox" class="accent-[#89B4FA] w-4 h-4 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between p-3 bg-[#11111B] border border-[#313244] rounded-xl">
+                <div>
+                  <div class="font-bold text-xs text-[#CDD6F4]">Fitzgerald Key Contrast Mode</div>
+                  <div class="text-[11px] text-[#A6ADC8]">High-contrast semantic grammar colors</div>
+                </div>
+                <input type="checkbox" checked class="accent-[#89B4FA] w-4 h-4 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between p-3 bg-[#11111B] border border-[#313244] rounded-xl">
+                <div>
+                  <div class="font-bold text-xs text-[#CDD6F4]">Show Status Bar</div>
+                  <div class="text-[11px] text-[#A6ADC8]">Display bottom voice, input, and draft status bar in Pane 1</div>
+                </div>
+                <input type="checkbox" id="setting-toggle-statusbar" checked onchange="toggleStatusBarSetting(this.checked)" class="accent-[#89B4FA] w-4 h-4 cursor-pointer">
+              </div>
+              <div class="flex items-center justify-between p-3 bg-[#11111B] border border-[#313244] rounded-xl">
+                <div>
+                  <div class="font-bold text-xs text-[#CDD6F4]">Partner Screen Flip (180°)</div>
+                  <div class="text-[11px] text-[#A6ADC8]">Invert message window for partner across table (Alt+F)</div>
+                </div>
+                <input type="checkbox" id="setting-toggle-screenflip" onchange="toggleScreenFlip(this.checked)" class="accent-[#89B4FA] w-4 h-4 cursor-pointer">
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between px-6 py-3.5 border-t border-[#313244] bg-[#1E1E2E]">
+        <span class="text-xs text-[#A6ADC8]">Calibration applies immediately</span>
+        <button onclick="closeSettingsModal()" class="min-h-[44px] px-6 py-2.5 bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] font-extrabold text-xs rounded-xl shadow transition active:scale-95">
+          Done &amp; Return to Workspace
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADD CORE CATEGORY -->
+  <!-- ========================================================================= -->
+  <div id="add-core-category-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden transition-opacity duration-200">
+    <div class="bg-[#181825] border border-[#313244] rounded-3xl w-full max-w-[480px] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#313244] bg-[#1E1E2E]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-[#FAB387]/20 border border-[#FAB387]/40 flex items-center justify-center text-[#FAB387] font-bold text-base">
+            🗂️
+          </div>
+          <h3 class="text-base font-bold text-[#CDD6F4]">Add Core Vocabulary Category</h3>
+        </div>
+        <button onclick="closeAddCoreCategoryModal()" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95" title="Close">✕</button>
+      </div>
+
+      <div class="p-6 flex flex-col gap-4 bg-[#181825]">
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Category Name</label>
+          <input id="new-core-cat-name" type="text" placeholder="e.g., Feelings, Question Words, Places..." class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Fitzgerald Grammar Color Theme</label>
+          <div class="grid grid-cols-5 gap-2">
+            <label class="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#FAB387]">
+              <input type="radio" name="core-cat-color" value="#FAB387" checked class="accent-[#FAB387]">
+              <span class="w-5 h-5 rounded-full bg-[#FAB387]"></span>
+              <span class="text-[10px] text-[#A6ADC8]">Orange</span>
+            </label>
+            <label class="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#A6E3A1]">
+              <input type="radio" name="core-cat-color" value="#A6E3A1" class="accent-[#A6E3A1]">
+              <span class="w-5 h-5 rounded-full bg-[#A6E3A1]"></span>
+              <span class="text-[10px] text-[#A6ADC8]">Green</span>
+            </label>
+            <label class="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#89B4FA]">
+              <input type="radio" name="core-cat-color" value="#89B4FA" class="accent-[#89B4FA]">
+              <span class="w-5 h-5 rounded-full bg-[#89B4FA]"></span>
+              <span class="text-[10px] text-[#A6ADC8]">Blue</span>
+            </label>
+            <label class="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#CBA6F7]">
+              <input type="radio" name="core-cat-color" value="#CBA6F7" class="accent-[#CBA6F7]">
+              <span class="w-5 h-5 rounded-full bg-[#CBA6F7]"></span>
+              <span class="text-[10px] text-[#A6ADC8]">Purple</span>
+            </label>
+            <label class="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#F9E2AF]">
+              <input type="radio" name="core-cat-color" value="#F9E2AF" class="accent-[#F9E2AF]">
+              <span class="w-5 h-5 rounded-full bg-[#F9E2AF]"></span>
+              <span class="text-[10px] text-[#A6ADC8]">Yellow</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#313244] bg-[#1E1E2E]">
+        <button onclick="closeAddCoreCategoryModal()" class="min-h-[44px] px-5 py-2.5 bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] text-xs font-bold rounded-xl transition active:scale-95">Cancel</button>
+        <button onclick="saveNewCoreCategory()" class="min-h-[44px] px-5 py-2.5 bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black rounded-xl shadow transition active:scale-95">Add Category</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADD CORE ITEM (WORD / TILE) -->
+  <!-- ========================================================================= -->
+  <div id="add-core-item-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden transition-opacity duration-200">
+    <div class="bg-[#181825] border border-[#313244] rounded-3xl w-full max-w-[480px] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#313244] bg-[#1E1E2E]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-[#89B4FA]/20 border border-[#89B4FA]/40 flex items-center justify-center text-[#89B4FA] font-bold text-base">
+            🔤
+          </div>
+          <h3 class="text-base font-bold text-[#CDD6F4]">Add Core Vocabulary Tile</h3>
+        </div>
+        <button onclick="closeAddCoreItemModal()" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95" title="Close">✕</button>
+      </div>
+
+      <div class="p-6 flex flex-col gap-4 bg-[#181825]">
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Target Category</label>
+          <select id="new-core-item-cat-select" class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+            <!-- Injected dynamically -->
+          </select>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2">
+            <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Word / Label</label>
+            <input id="new-core-item-text" type="text" placeholder="e.g., Happy, Later, Bathroom..." class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Icon / Emoji</label>
+            <input id="new-core-item-icon" type="text" placeholder="e.g., 😊" maxlength="4" class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-center text-lg text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#313244] bg-[#1E1E2E]">
+        <button onclick="closeAddCoreItemModal()" class="min-h-[44px] px-5 py-2.5 bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] text-xs font-bold rounded-xl transition active:scale-95">Cancel</button>
+        <button onclick="saveNewCoreItem()" class="min-h-[44px] px-5 py-2.5 bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black rounded-xl shadow transition active:scale-95">Add Tile</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADD ACTIVITY DECK -->
+  <!-- ========================================================================= -->
+  <div id="add-activity-deck-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden transition-opacity duration-200">
+    <div class="bg-[#181825] border border-[#313244] rounded-3xl w-full max-w-[480px] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#313244] bg-[#1E1E2E]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-[#A6E3A1]/20 border border-[#A6E3A1]/40 flex items-center justify-center text-[#A6E3A1] font-bold text-base">
+            📂
+          </div>
+          <h3 class="text-base font-bold text-[#CDD6F4]">Create New Activity Deck</h3>
+        </div>
+        <button onclick="closeAddActivityDeckModal()" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95" title="Close">✕</button>
+      </div>
+
+      <div class="p-6 flex flex-col gap-4 bg-[#181825]">
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Deck Title</label>
+          <input id="new-activity-deck-title" type="text" placeholder="e.g., Morning Routine, Physical Therapy, Bedtime..." class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Subtitle / Description</label>
+          <input id="new-activity-deck-subtitle" type="text" placeholder="e.g., Quick communication for morning prep" class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Layout Style</label>
+          <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+            <label class="flex items-center gap-2 p-3 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#89B4FA] min-h-[44px]">
+              <input type="radio" name="deck-layout-type" value="grid" checked class="accent-[#89B4FA]">
+              <span>2-Column Grid</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#89B4FA] min-h-[44px]">
+              <input type="radio" name="deck-layout-type" value="list" class="accent-[#89B4FA]">
+              <span>Vertical List</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#313244] bg-[#1E1E2E]">
+        <button onclick="closeAddActivityDeckModal()" class="min-h-[44px] px-5 py-2.5 bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] text-xs font-bold rounded-xl transition active:scale-95">Cancel</button>
+        <button onclick="saveNewActivityDeck()" class="min-h-[44px] px-5 py-2.5 bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black rounded-xl shadow transition active:scale-95">Create Deck</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADD ACTIVITY ITEM -->
+  <!-- ========================================================================= -->
+  <div id="add-activity-item-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden transition-opacity duration-200">
+    <div class="bg-[#181825] border border-[#313244] rounded-3xl w-full max-w-[480px] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#313244] bg-[#1E1E2E]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-[#CBA6F7]/20 border border-[#CBA6F7]/40 flex items-center justify-center text-[#CBA6F7] font-bold text-base">
+            ⭐
+          </div>
+          <h3 class="text-base font-bold text-[#CDD6F4]">Add Activity Item / Phrase</h3>
+        </div>
+        <button onclick="closeAddActivityItemModal()" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95" title="Close">✕</button>
+      </div>
+
+      <div class="p-6 flex flex-col gap-4 bg-[#181825]">
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Target Activity Deck</label>
+          <select id="new-activity-item-deck-select" class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+            <!-- Injected dynamically -->
+          </select>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2">
+            <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Phrase / Label</label>
+            <input id="new-activity-item-text" type="text" placeholder="e.g., Turn over, Brush teeth..." class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Icon / Emoji</label>
+            <input id="new-activity-item-icon" type="text" placeholder="e.g., 🪥" maxlength="4" class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-center text-lg text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Accent Color</label>
+          <div class="grid grid-cols-4 gap-2">
+            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#89B4FA]">
+              <input type="radio" name="activity-item-color" value="#89B4FA" checked class="accent-[#89B4FA]">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#89B4FA]"></span>
+              <span class="text-[11px] text-[#CDD6F4]">Blue</span>
+            </label>
+            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#A6E3A1]">
+              <input type="radio" name="activity-item-color" value="#A6E3A1" class="accent-[#A6E3A1]">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#A6E3A1]"></span>
+              <span class="text-[11px] text-[#CDD6F4]">Green</span>
+            </label>
+            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#FAB387]">
+              <input type="radio" name="activity-item-color" value="#FAB387" class="accent-[#FAB387]">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#FAB387]"></span>
+              <span class="text-[11px] text-[#CDD6F4]">Orange</span>
+            </label>
+            <label class="flex items-center gap-1.5 p-2 rounded-xl bg-[#1E1E2E] border border-[#313244] cursor-pointer hover:border-[#F38BA8]">
+              <input type="radio" name="activity-item-color" value="#F38BA8" class="accent-[#F38BA8]">
+              <span class="w-3.5 h-3.5 rounded-full bg-[#F38BA8]"></span>
+              <span class="text-[11px] text-[#CDD6F4]">Red</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#313244] bg-[#1E1E2E]">
+        <button onclick="closeAddActivityItemModal()" class="min-h-[44px] px-5 py-2.5 bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] text-xs font-bold rounded-xl transition active:scale-95">Cancel</button>
+        <button onclick="saveNewActivityItem()" class="min-h-[44px] px-5 py-2.5 bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black rounded-xl shadow transition active:scale-95">Add Item</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADD CONVERSATION (BLANK OR LOAD FROM FILE) -->
+  <!-- ========================================================================= -->
+  <div id="add-conversation-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 hidden transition-opacity duration-200">
+    <div class="bg-[#181825] border border-[#313244] rounded-3xl w-full max-w-[520px] flex flex-col shadow-2xl overflow-hidden animate-fadeIn">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-[#313244] bg-[#1E1E2E]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-[#89B4FA]/20 border border-[#89B4FA]/40 flex items-center justify-center text-[#89B4FA] font-bold text-base">
+            💬
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#CDD6F4]">Add New Conversation</h3>
+            <p class="text-[11px] text-[#A6ADC8]">Create a fresh draft or load notes from file</p>
+          </div>
+        </div>
+        <button onclick="closeAddConversationModal()" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] flex items-center justify-center text-sm font-bold transition active:scale-95" title="Close">✕</button>
+      </div>
+
+      <div class="p-6 flex flex-col gap-4 bg-[#181825]">
+        <!-- Option Cards: Blank vs File -->
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Blank Option -->
+          <div id="conv-option-blank" onclick="selectConvMode('blank')" class="p-4 rounded-2xl border-2 border-[#89B4FA] bg-[#89B4FA]/10 cursor-pointer flex flex-col gap-1.5 transition">
+            <div class="text-2xl">📝</div>
+            <div class="text-xs font-bold text-[#89B4FA]">Blank Conversation</div>
+            <div class="text-[10px] text-[#A6ADC8]">Start a fresh scratchpad to compose thoughts</div>
+          </div>
+
+          <!-- Load from File Option -->
+          <div id="conv-option-file" onclick="selectConvMode('file')" class="p-4 rounded-2xl border-2 border-[#313244] bg-[#1E1E2E] hover:border-[#89B4FA]/60 cursor-pointer flex flex-col gap-1.5 transition">
+            <div class="text-2xl">📂</div>
+            <div class="text-xs font-bold text-[#CDD6F4]">Load From File</div>
+            <div class="text-[10px] text-[#A6ADC8]">Import .txt or .md with quotes &amp; lists</div>
+          </div>
+        </div>
+
+        <!-- Section for Blank Title -->
+        <div id="conv-blank-section">
+          <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Conversation Title</label>
+          <input id="new-conv-title" type="text" placeholder="e.g., Doctor Visit, Phone Call, Grocery List..." class="w-full bg-[#11111B] border border-[#313244] rounded-xl px-3.5 py-2 text-sm text-[#CDD6F4] focus:outline-none focus:border-[#89B4FA]">
+        </div>
+
+        <!-- Section for File Import -->
+        <div id="conv-file-section" class="hidden flex flex-col gap-3">
+          <div>
+            <label class="text-xs font-bold text-[#CDD6F4] block mb-1.5">Select Text or Markdown File (.txt, .md)</label>
+            <input id="conv-file-input" type="file" accept=".txt,.md,.markdown" onchange="handleFileSelected(event)" class="hidden">
+            <button onclick="document.getElementById('conv-file-input').click()" class="w-full border-2 border-dashed border-[#89B4FA]/40 hover:border-[#89B4FA] bg-[#11111B] p-4 rounded-2xl text-center transition flex flex-col items-center justify-center gap-1.5">
+              <span class="text-2xl">📄</span>
+              <span id="conv-file-label" class="text-xs font-bold text-[#89B4FA]">Click to Choose File (.md or .txt)</span>
+              <span class="text-[10px] text-[#A6ADC8]">Supports quotes (&gt;), lists (- / * / 1.), bold (**), italics (*)</span>
+            </button>
+          </div>
+
+          <!-- File Content Preview -->
+          <div id="conv-file-preview-box" class="hidden flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-[11px] font-bold text-[#A6ADC8]">
+              <span>Parsed Preview:</span>
+              <span id="conv-file-size" class="text-[#89B4FA]"></span>
+            </div>
+            <div id="conv-file-preview-content" class="max-h-36 overflow-y-auto custom-scrollbar p-3 bg-[#11111B] border border-[#313244] rounded-xl text-xs text-[#CDD6F4] font-mono whitespace-pre-wrap">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-[#313244] bg-[#1E1E2E]">
+        <button onclick="closeAddConversationModal()" class="min-h-[44px] px-5 py-2.5 bg-[#313244] hover:bg-[#45475A] text-[#CDD6F4] text-xs font-bold rounded-xl transition active:scale-95">Cancel</button>
+        <button id="btn-create-conv" onclick="confirmAddConversation()" class="min-h-[44px] px-5 py-2.5 bg-[#89B4FA] hover:bg-[#B4BEFE] text-[#11111B] text-xs font-black rounded-xl shadow transition active:scale-95">Create Conversation</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT: MULTI-CONVERSATION ENGINE, PANE 3 TOGGLE & TTS -->
+  <!-- ========================================================================= -->
+  <script>
+    // -------------------------------------------------------------
+    // DYNAMIC BRANDING & APP CONFIGURATION (ScoobyUI Base)
+    // Allows ScoobyUI to dynamically adapt its identity for ScoobyAAC,
+    // SpeakDirect, GestureFlow, or any custom AAC host application.
+    // Overridable via window.SCOOBY_CONFIG, URL query (?app=Name),
+    // or IPC message from C# host ({ type: 'SET_APP_INFO', appName: '...' }).
+    // -------------------------------------------------------------
+    const urlParams = new URLSearchParams(window.location.search);
+    window.SCOOBY_CONFIG = Object.assign({
+      appName: urlParams.get('app') || (window.SCOOBY_CONFIG && window.SCOOBY_CONFIG.appName) || "GestureFlow",
+      tagline: urlParams.get('tagline') || (window.SCOOBY_CONFIG && window.SCOOBY_CONFIG.tagline) || "Movesense 9-DoF BLE & MediaPipe Hand Tracking AAC",
+      platform: "Desktop & Tablet • 1250×700"
+    }, window.SCOOBY_CONFIG || {});
+
+    function applyAppBranding(name, tagline) {
+      if (name) window.SCOOBY_CONFIG.appName = name;
+      if (tagline) window.SCOOBY_CONFIG.tagline = tagline;
+      const currentName = window.SCOOBY_CONFIG.appName;
+
+      // 1. Update Document Title
+      document.title = `${currentName} - 3-Pane Adaptive AAC`;
+
+      // 2. Update all bound branding elements across desktop & mobile headers
+      document.querySelectorAll('.app-name-bind').forEach(el => {
+        el.innerText = currentName;
+      });
+
+      // 3. Update Settings modal title
+      const settingsTitle = document.getElementById('settings-modal-app-title');
+      if (settingsTitle) {
+        settingsTitle.innerText = `${currentName} Settings & Configuration`;
+      }
+    }
+
+    // Listen for IPC messages from C# WebView2 host (SpeakDirect / GestureFlow / ScoobyUI.Core)
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.addEventListener('message', event => {
+        const msg = event.data;
+        if (msg && msg.type === 'SET_APP_INFO' && msg.appName) {
+          applyAppBranding(msg.appName, msg.tagline);
+        }
+      });
+    }
+
+    // -------------------------------------------------------------
+    // MULTI-CONVERSATION STATE (Starts with 3 Blank Conversations)
+    // -------------------------------------------------------------
+    let conversations = [
+      {
+        id: 1,
+        title: 'Conversation 1',
+        chips: [
+          { text: 'I', color: '#FAB387' },
+          { text: 'want', color: '#A6E3A1' },
+          { text: 'water', color: '#89B4FA' },
+          { text: 'please', color: '#F9E2AF' }
+        ],
+        markdown: '',
+        lastVisited: Date.now()
+      },
+      {
+        id: 2,
+        title: 'Conversation 2',
+        chips: [],
+        markdown: '',
+        lastVisited: Date.now() - 30000
+      },
+      {
+        id: 3,
+        title: 'Doctor Notes (MD)',
+        chips: [],
+        markdown: `# Doctor Consultation Notes\n> "Patient reports mild pain in left shoulder during morning routine."\n\n### Symptoms & Needs:\n- **Pain level**: Mild (*2 out of 10*)\n- **Medication**: *Tylenol 500mg* taken at 8:00 AM\n- Needs **assistance** with wheelchair repositioning\n\n1. Physical therapy scheduled for 2:00 PM\n2. Recheck blood pressure before dinner`,
+        lastVisited: Date.now() - 60000
+      }
+    ];
+
+    let activeConversationId = 1;
+    let conversationCounter = 3;
+
+    // Spoken Utterance History Log
+    let historyLog = [
+      { text: "Good morning! How are you today?", time: "10:14 AM" },
+      { text: "I need help adjusting my chair.", time: "11:02 AM" },
+      { text: "Thank you very much.", time: "11:45 AM" }
+    ];
+
+    // Core Board Categories & Tiles State (Fitzgerald Key)
+    let coreCategories = [
+      {
+        id: 'cat-pronouns',
+        name: 'Pronouns',
+        color: '#FAB387',
+        items: [
+          { text: 'I', icon: '🙋' },
+          { text: 'You', icon: '👉' },
+          { text: 'We', icon: '👥' },
+          { text: 'They', icon: '👥' }
+        ]
+      },
+      {
+        id: 'cat-verbs',
+        name: 'Actions / Verbs',
+        color: '#A6E3A1',
+        items: [
+          { text: 'want', icon: '🤲' },
+          { text: 'need', icon: '❗' },
+          { text: 'help', icon: '🆘' },
+          { text: 'like', icon: '👍' },
+          { text: 'go', icon: '🚶' },
+          { text: 'stop', icon: '🛑' }
+        ]
+      },
+      {
+        id: 'cat-nouns',
+        name: 'Core Needs / Nouns',
+        color: '#89B4FA',
+        items: [
+          { text: 'water', icon: '💧' },
+          { text: 'food', icon: '🍲' },
+          { text: 'restroom', icon: '🚻' },
+          { text: 'medicine', icon: '💊' },
+          { text: 'bed', icon: '🛏️' },
+          { text: 'family', icon: '👨‍👩‍👧' }
+        ]
+      },
+      {
+        id: 'cat-modifiers',
+        name: 'Modifiers',
+        color: '#CBA6F7',
+        items: [
+          { text: 'more', icon: '➕' },
+          { text: 'good', icon: '✨' },
+          { text: 'bad', icon: '👎' },
+          { text: 'done', icon: '🏁' }
+        ]
+      },
+      {
+        id: 'cat-social',
+        name: 'Social',
+        color: '#F9E2AF',
+        items: [
+          { text: 'yes', icon: '✅' },
+          { text: 'no', icon: '❌' },
+          { text: 'please', icon: '🙏' },
+          { text: 'thank you', icon: '✨' }
+        ]
+      }
+    ];
+
+    // Activity Decks & Items State
+    let activityDecks = [
+      {
+        id: 'deck-pain',
+        title: 'Wong-Baker Pain Scale',
+        subtitle: '0 to 10 rating',
+        layout: 'grid3',
+        items: [
+          { text: 'No hurt (0)', icon: '😄', color: '#A6E3A1', sub: '0 • No Hurt' },
+          { text: 'Mild pain (2)', icon: '🙂', color: '#A6E3A1', sub: '2 • Mild' },
+          { text: 'Moderate pain (6)', icon: '😣', color: '#FAB387', sub: '6 • Moderate' },
+          { text: 'Severe pain (8)', icon: '😫', color: '#F38BA8', sub: '8 • Severe' },
+          { text: 'Worst pain (10)', icon: '😭', color: '#F38BA8', sub: '10 • Emergency Worst', colSpan: 2 }
+        ]
+      },
+      {
+        id: 'deck-location',
+        title: 'Pain Location',
+        subtitle: 'Anatomical pain points',
+        layout: 'grid2',
+        items: [
+          { text: 'Head hurts', icon: '🤕', color: '#F38BA8' },
+          { text: 'Chest hurts', icon: '🫁', color: '#F38BA8' },
+          { text: 'Stomach hurts', icon: '🤢', color: '#F38BA8' },
+          { text: 'Back hurts', icon: '🦴', color: '#F38BA8' }
+        ]
+      },
+      {
+        id: 'deck-comfort',
+        title: 'Meals & Comfort',
+        subtitle: 'Everyday physical needs',
+        layout: 'list',
+        items: [
+          { text: 'I am thirsty', icon: '🥤', color: '#89B4FA' },
+          { text: 'I am hungry', icon: '🍽️', color: '#FAB387' },
+          { text: 'Need a blanket', icon: '🥶', color: '#89B4FA' },
+          { text: 'Adjust wheelchair', icon: '💺', color: '#A6E3A1' }
+        ]
+      }
+    ];
+
+    // Pane Visibility States
+    let isPane2Visible = true;
+    let isPane3Visible = true;
+    let pane3Mode = 'keyboard'; // 'keyboard' or 'core'
+    let currentTheme = 'dark'; // 'dark' (Mocha) or 'light' (Latte)
+    let currentButtonDisplayMode = 'both'; // 'both', 'symbol-only', or 'label-only'
+
+    // Initialize UI
+    window.addEventListener('DOMContentLoaded', () => {
+      applyAppBranding();
+      renderActiveMessageWindow();
+      renderConversationsList();
+      renderHistoryLog();
+      renderCoreBoard();
+      renderActivityDecks();
+      renderConvDropdownItems();
+      setThemeMode(currentTheme);
+      setButtonDisplayMode(currentButtonDisplayMode);
+
+      // On initial load, if on small screen, ensure drawers start off-screen
+      if (isMobileMode()) {
+        isPane2Visible = false;
+        isPane3Visible = false;
+        document.getElementById('pane-2').classList.remove('mobile-open');
+        document.getElementById('pane-3').classList.remove('mobile-open');
+        document.getElementById('drawer-backdrop').classList.add('hidden');
+        const btn2 = document.getElementById('toggle-pane2-btn');
+        const btn3 = document.getElementById('toggle-pane3-btn');
+        const ind2 = document.getElementById('pane2-indicator');
+        const ind3 = document.getElementById('pane3-indicator');
+        if (btn2) {
+          btn2.classList.replace('bg-[#89B4FA]', 'bg-[#313244]');
+          btn2.classList.replace('text-[#11111B]', 'text-[#CDD6F4]');
+        }
+        if (btn3) {
+          btn3.classList.replace('bg-[#89B4FA]', 'bg-[#313244]');
+          btn3.classList.replace('text-[#11111B]', 'text-[#CDD6F4]');
+        }
+        if (ind2) ind2.innerText = '▶';
+        if (ind3) ind3.innerText = '▲';
+      }
+    });
+
+    // -------------------------------------------------------------
+    // PANE 3 MODE TOGGLE (KEYBOARD <-> CORE BOARD)
+    // -------------------------------------------------------------
+    function togglePane3Mode() {
+      const newMode = pane3Mode === 'keyboard' ? 'core' : 'keyboard';
+      setPane3Mode(newMode);
+    }
+
+    // Overlay Decks Toggle Handler
+    function handleOverlayDecksToggle() {
+      switchPane2Tab('activity');
+      togglePane2();
+    }
+
+    function setPane3Mode(mode) {
+      pane3Mode = mode;
+      const viewKeyboard = document.getElementById('pane3-view-keyboard');
+      const viewCore = document.getElementById('pane3-view-core');
+      const toggleBtn = document.getElementById('pane3-mode-toggle-btn');
+      const toggleIcon = document.getElementById('pane3-toggle-icon');
+      const toggleText = document.getElementById('pane3-toggle-text');
+      const modePill = document.getElementById('pane3-mode-pill');
+      const modePillDot = document.getElementById('pane3-mode-pill-dot');
+      const modePillText = document.getElementById('pane3-mode-pill-text');
+      const cogWrapper = document.getElementById('core-settings-dropdown-wrapper');
+      const pills = document.getElementById('keyboard-prediction-pills');
+      const statusLabel = document.getElementById('pane3-mode-status');
+
+      // Close dropdown if open
+      closeCoreCogDropdown();
+
+      if (mode === 'keyboard') {
+        viewKeyboard.classList.remove('hidden');
+        viewCore.classList.add('hidden');
+        pills.classList.remove('hidden');
+        cogWrapper.classList.add('hidden');
+
+        if (toggleBtn) {
+          toggleBtn.classList.remove('bg-[#FAB387]', 'hover:bg-[#F9E2AF]');
+          toggleBtn.classList.add('bg-[#89B4FA]', 'hover:bg-[#B4BEFE]');
+        }
+        if (toggleIcon) toggleIcon.innerText = '🗣️';
+        if (toggleText) toggleText.innerText = 'Switch to Core Board';
+
+        if (modePillDot) modePillDot.className = 'w-2 h-2 rounded-full bg-[#89B4FA]';
+        if (modePillText) {
+          modePillText.innerText = 'Keyboard Mode';
+          modePillText.className = 'text-[#89B4FA]';
+        }
+
+        if (statusLabel) {
+          statusLabel.innerText = 'Keyboard Mode';
+          statusLabel.className = 'text-[#89B4FA]';
+        }
+      } else {
+        viewKeyboard.classList.add('hidden');
+        viewCore.classList.remove('hidden');
+        pills.classList.add('hidden');
+        cogWrapper.classList.remove('hidden');
+
+        if (toggleBtn) {
+          toggleBtn.classList.remove('bg-[#89B4FA]', 'hover:bg-[#B4BEFE]');
+          toggleBtn.classList.add('bg-[#A6E3A1]', 'hover:bg-[#B4BEFE]');
+        }
+        if (toggleIcon) toggleIcon.innerText = '⌨️';
+        if (toggleText) toggleText.innerText = 'Switch to Keyboard';
+
+        if (modePillDot) modePillDot.className = 'w-2 h-2 rounded-full bg-[#A6E3A1]';
+        if (modePillText) {
+          modePillText.innerText = 'Core Vocabulary Mode';
+          modePillText.className = 'text-[#A6E3A1]';
+        }
+
+        if (statusLabel) {
+          statusLabel.innerText = 'Core Board Mode';
+          statusLabel.className = 'text-[#A6E3A1]';
+        }
+      }
+    }
+
+    // Core Settings Cog Dropdown Handlers
+    function toggleCoreCogDropdown(event) {
+      if (event) event.stopPropagation();
+      const menu = document.getElementById('core-cog-dropdown');
+      menu.classList.toggle('hidden');
+    }
+
+    function closeCoreCogDropdown() {
+      const menu = document.getElementById('core-cog-dropdown');
+      if (menu) menu.classList.add('hidden');
+    }
+
+    function handleCoreDropdownAction(action) {
+      closeCoreCogDropdown();
+      if (action === 'item') {
+        openAddCoreItemModal();
+      } else if (action === 'category') {
+        openAddCoreCategoryModal();
+      }
+    }
+
+    // Dismiss dropdowns on window click
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('#core-settings-dropdown-wrapper')) {
+        closeCoreCogDropdown();
+      }
+      if (!e.target.closest('#conv-dropdown-wrapper')) {
+        closeConvDropdown();
+      }
+    });
+
+    // -------------------------------------------------------------
+    // CONVERSATIONS DROPDOWN SELECTOR (SORTED BY RECENT VISITED)
+    // -------------------------------------------------------------
+    function toggleConvDropdown(event) {
+      if (event) event.stopPropagation();
+      const menu = document.getElementById('conv-dropdown-menu');
+      const chevron = document.getElementById('conv-dropdown-chevron');
+      if (!menu) return;
+      const isHidden = menu.classList.contains('hidden');
+
+      // Close other dropdowns
+      closeCoreCogDropdown();
+
+      if (isHidden) {
+        renderConvDropdownItems();
+        menu.classList.remove('hidden');
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+      } else {
+        closeConvDropdown();
+      }
+    }
+
+    function closeConvDropdown() {
+      const menu = document.getElementById('conv-dropdown-menu');
+      const chevron = document.getElementById('conv-dropdown-chevron');
+      if (menu) menu.classList.add('hidden');
+      if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+
+    function selectConversationFromDropdown(id) {
+      closeConvDropdown();
+      switchActiveConversation(id);
+    }
+
+    function handleDropdownNewConv() {
+      closeConvDropdown();
+      openAddConversationModal();
+    }
+
+    function renderConvDropdownItems() {
+      const container = document.getElementById('conv-dropdown-items');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // Sort conversations by recently visited (descending timestamp)
+      const sorted = [...conversations].sort((a, b) => (b.lastVisited || 0) - (a.lastVisited || 0));
+
+      sorted.forEach((conv, index) => {
+        const isActive = conv.id === activeConversationId;
+        const isMd = Boolean(conv.markdown && conv.markdown.trim().length > 0);
+        const chipCount = conv.chips ? conv.chips.length : 0;
+
+        let previewText = '';
+        if (isMd) {
+          const firstLine = conv.markdown.trim().split('\n')[0].replace(/[#*`_>]/g, '').trim();
+          previewText = `[MD] ${firstLine || 'Imported markdown'}`;
+        } else if (chipCount > 0) {
+          previewText = conv.chips.map(c => c.text).slice(0, 5).join(' ') + (chipCount > 5 ? '...' : '');
+        } else {
+          previewText = 'Blank draft';
+        }
+
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.onclick = (e) => {
+          e.stopPropagation();
+          selectConversationFromDropdown(conv.id);
+        };
+        item.className = `w-full text-left p-2.5 rounded-xl border transition flex items-center justify-between gap-2.5 min-h-[44px] active:scale-98 ${
+          isActive
+            ? 'bg-[#89B4FA]/20 border-[#89B4FA]/60 text-[#CDD6F4] shadow-sm'
+            : 'bg-[#1E1E2E] hover:bg-[#252538] border-[#313244]/80 text-[#CDD6F4]'
+        }`;
+
+        item.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <span class="text-sm shrink-0">${isMd ? '📄' : '💬'}</span>
+            <div class="flex flex-col min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold truncate ${isActive ? 'text-[#89B4FA]' : 'text-[#CDD6F4]'}">${conv.title}</span>
+                ${isActive ? '<span class="px-1.5 py-0.2 rounded bg-[#89B4FA] text-[#11111B] text-[8px] font-black uppercase">Active</span>' : ''}
+              </div>
+              <span class="text-[10px] text-[#A6ADC8] truncate font-medium">${previewText}</span>
+            </div>
+          </div>
+          <div class="text-right shrink-0 flex flex-col items-end">
+            <span class="text-[9px] font-bold text-[#89B4FA]">${index === 0 && isActive ? 'Active now' : formatRecentTime(conv.lastVisited)}</span>
+            <span class="text-[9px] text-[#A6ADC8]/60">${isMd ? 'File' : chipCount + ' words'}</span>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function formatRecentTime(ts) {
+      if (!ts) return 'Recent';
+      const diffSec = Math.floor((Date.now() - ts) / 1000);
+      if (diffSec < 5) return 'Active now';
+      if (diffSec < 60) return `${diffSec}s ago`;
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const diffHour = Math.floor(diffMin / 60);
+      if (diffHour < 24) return `${diffHour}h ago`;
+      return 'Earlier';
+    }
+
+    // -------------------------------------------------------------
+    // CONVERSATION MANAGER FUNCTIONS (BLANK & FILE IMPORT)
+    // -------------------------------------------------------------
+    let currentConvMode = 'blank'; // 'blank' or 'file'
+    let selectedFileText = '';
+    let selectedFileName = '';
+
+    function getActiveConversation() {
+      return conversations.find(c => c.id === activeConversationId) || conversations[0];
+    }
+
+    function switchActiveConversation(id) {
+      activeConversationId = id;
+      const conv = getActiveConversation();
+      conv.lastVisited = Date.now();
+      const titleEl = document.getElementById('active-conv-title');
+      if (titleEl) titleEl.innerText = conv.title;
+      renderActiveMessageWindow();
+      renderConversationsList();
+      renderConvDropdownItems();
+    }
+
+    function openAddConversationModal() {
+      selectConvMode('blank');
+      document.getElementById('new-conv-title').value = '';
+      document.getElementById('conv-file-input').value = '';
+      document.getElementById('conv-file-label').innerText = 'Click to Choose File (.md or .txt)';
+      document.getElementById('conv-file-preview-box').classList.add('hidden');
+      selectedFileText = '';
+      selectedFileName = '';
+      document.getElementById('add-conversation-modal').classList.remove('hidden');
+    }
+
+    function closeAddConversationModal() {
+      document.getElementById('add-conversation-modal').classList.add('hidden');
+    }
+
+    function selectConvMode(mode) {
+      currentConvMode = mode;
+      const optBlank = document.getElementById('conv-option-blank');
+      const optFile = document.getElementById('conv-option-file');
+      const secBlank = document.getElementById('conv-blank-section');
+      const secFile = document.getElementById('conv-file-section');
+      const btn = document.getElementById('btn-create-conv');
+
+      if (mode === 'blank') {
+        optBlank.className = 'p-4 rounded-2xl border-2 border-[#89B4FA] bg-[#89B4FA]/10 cursor-pointer flex flex-col gap-1.5 transition';
+        optBlank.querySelector('.text-xs').className = 'text-xs font-bold text-[#89B4FA]';
+        optFile.className = 'p-4 rounded-2xl border-2 border-[#313244] bg-[#1E1E2E] hover:border-[#89B4FA]/60 cursor-pointer flex flex-col gap-1.5 transition';
+        optFile.querySelector('.text-xs').className = 'text-xs font-bold text-[#CDD6F4]';
+
+        secBlank.classList.remove('hidden');
+        secFile.classList.add('hidden');
+        btn.innerText = 'Create Blank Conversation';
+      } else {
+        optFile.className = 'p-4 rounded-2xl border-2 border-[#89B4FA] bg-[#89B4FA]/10 cursor-pointer flex flex-col gap-1.5 transition';
+        optFile.querySelector('.text-xs').className = 'text-xs font-bold text-[#89B4FA]';
+        optBlank.className = 'p-4 rounded-2xl border-2 border-[#313244] bg-[#1E1E2E] hover:border-[#89B4FA]/60 cursor-pointer flex flex-col gap-1.5 transition';
+        optBlank.querySelector('.text-xs').className = 'text-xs font-bold text-[#CDD6F4]';
+
+        secBlank.classList.add('hidden');
+        secFile.classList.remove('hidden');
+        btn.innerText = 'Load Conversation from File';
+      }
+    }
+
+    function handleFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      selectedFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        selectedFileText = evt.target.result;
+        document.getElementById('conv-file-label').innerText = `Selected: ${file.name}`;
+        document.getElementById('conv-file-size').innerText = `${file.size} bytes • ${selectedFileText.split('\n').length} lines`;
+        document.getElementById('conv-file-preview-content').innerText = selectedFileText.slice(0, 500) + (selectedFileText.length > 500 ? '\n...[truncated preview]' : '');
+        document.getElementById('conv-file-preview-box').classList.remove('hidden');
+      };
+      reader.readAsText(file);
+    }
+
+    function confirmAddConversation() {
+      if (currentConvMode === 'blank') {
+        const titleInput = document.getElementById('new-conv-title').value.trim();
+        conversationCounter++;
+        const newId = conversationCounter;
+        const finalTitle = titleInput || ('Conversation ' + newId);
+        
+        conversations.push({
+          id: newId,
+          title: finalTitle,
+          chips: [],
+          markdown: '',
+          lastVisited: Date.now()
+        });
+
+        document.getElementById('conv-count-badge').innerText = conversations.length;
+        closeAddConversationModal();
+        switchActiveConversation(newId);
+      } else {
+        // Load from File
+        if (!selectedFileText) {
+          alert('Please choose a text or markdown file to load.');
+          return;
+        }
+
+        conversationCounter++;
+        const newId = conversationCounter;
+        const cleanName = selectedFileName.replace(/\.[^/.]+$/, "") || ('File ' + newId);
+
+        conversations.push({
+          id: newId,
+          title: cleanName,
+          chips: [],
+          markdown: selectedFileText,
+          lastVisited: Date.now()
+        });
+
+        document.getElementById('conv-count-badge').innerText = conversations.length;
+        closeAddConversationModal();
+        switchActiveConversation(newId);
+      }
+    }
+
+    function deleteConversation(id, event) {
+      event.stopPropagation();
+      if (conversations.length <= 1) {
+        alert('You must keep at least one active conversation.');
+        return;
+      }
+      conversations = conversations.filter(c => c.id !== id);
+      document.getElementById('conv-count-badge').innerText = conversations.length;
+      if (activeConversationId === id) {
+        activeConversationId = conversations[0].id;
+      }
+      switchActiveConversation(activeConversationId);
+    }
+
+    function renderConversationsList() {
+      const container = document.getElementById('conversations-list');
+      container.innerHTML = '';
+
+      conversations.forEach(conv => {
+        const isActive = conv.id === activeConversationId;
+        const isMd = Boolean(conv.markdown && conv.markdown.trim().length > 0);
+        const chipCount = conv.chips ? conv.chips.length : 0;
+        
+        let previewText = '';
+        if (isMd) {
+          const firstLine = conv.markdown.trim().split('\n')[0].replace(/[#*`_>]/g, '').trim();
+          previewText = `<span class="text-[#89B4FA] font-mono">[Markdown doc]</span> ${firstLine || 'Imported markdown'}`;
+        } else if (chipCount > 0) {
+          previewText = conv.chips.map(c => c.text).join(' ');
+        } else {
+          previewText = '<em class="text-[#A6ADC8]/60 font-normal">Blank conversation...</em>';
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-2.5 rounded-xl border transition cursor-pointer flex flex-col gap-1 ${
+          isActive 
+            ? 'bg-[#89B4FA]/15 border-[#89B4FA] ring-1 ring-[#89B4FA]' 
+            : 'bg-[#1E1E2E] border-[#313244] hover:bg-[#252538]'
+        }`;
+        card.onclick = () => switchActiveConversation(conv.id);
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold ${isActive ? 'text-[#89B4FA]' : 'text-[#CDD6F4]'}">${conv.title}</span>
+              ${isActive ? '<span class="px-1.5 py-0.2 rounded bg-[#89B4FA] text-[#11111B] text-[9px] font-black uppercase">Active</span>' : ''}
+              ${isMd ? '<span class="px-1.5 py-0.2 rounded bg-[#CBA6F7]/20 border border-[#CBA6F7]/40 text-[#CBA6F7] text-[9px] font-bold">.MD</span>' : ''}
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-[#A6ADC8]">${isMd ? 'File' : chipCount + ' words'}</span>
+              ${conversations.length > 1 ? `<button onclick="deleteConversation(${conv.id}, event)" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl hover:bg-[#F38BA8]/20 text-[#F38BA8] text-xs font-bold flex items-center justify-center transition active:scale-95" title="Delete conversation">✕</button>` : ''}
+            </div>
+          </div>
+          <div class="text-[11px] text-[#CDD6F4] truncate font-medium">
+            ${previewText}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // MARKDOWN PARSER (Quotes, Lists, Text Decorations, Headers, Code)
+    // -------------------------------------------------------------
+    function renderMarkdownToHtml(md) {
+      if (!md) return '';
+      const lines = md.split('\n');
+      let html = '';
+      let inUl = false;
+      let inOl = false;
+      let inBlockquote = false;
+
+      function closeLists() {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (inOl) { html += '</ol>'; inOl = false; }
+      }
+      function closeBlockquote() {
+        if (inBlockquote) { html += '</blockquote>'; inBlockquote = false; }
+      }
+
+      function formatInline(text) {
+        // Escape HTML tags to prevent injection
+        let res = text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+
+        // Bold + Italic (***text***)
+        res = res.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        // Bold (**text**)
+        res = res.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Italic (*text* or _text_)
+        res = res.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        res = res.replace(/_(.*?)_/g, '<em>$1</em>');
+        // Strikethrough (~~text~~)
+        res = res.replace(/~~(.*?)~~/g, '<del>$1</del>');
+        // Inline code (`code`)
+        res = res.replace(/`([^`]+)`/g, '<code>$1</code>');
+        return res;
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const rawLine = lines[i];
+        const trimmed = rawLine.trim();
+
+        if (trimmed === '') {
+          closeLists();
+          closeBlockquote();
+          continue;
+        }
+
+        // Blockquotes (> text)
+        if (trimmed.startsWith('>')) {
+          closeLists();
+          const quoteText = formatInline(trimmed.replace(/^>\s?/, ''));
+          if (!inBlockquote) {
+            html += '<blockquote class="my-1.5">';
+            inBlockquote = true;
+          }
+          html += `<p class="my-0.5">${quoteText}</p>`;
+          continue;
+        } else {
+          closeBlockquote();
+        }
+
+        // Headers (#, ##, ###)
+        if (trimmed.startsWith('### ')) {
+          closeLists();
+          html += `<h3>${formatInline(trimmed.slice(4))}</h3>`;
+          continue;
+        } else if (trimmed.startsWith('## ')) {
+          closeLists();
+          html += `<h2>${formatInline(trimmed.slice(3))}</h2>`;
+          continue;
+        } else if (trimmed.startsWith('# ')) {
+          closeLists();
+          html += `<h1>${formatInline(trimmed.slice(2))}</h1>`;
+          continue;
+        }
+
+        // Unordered Lists (- item or * item)
+        const ulMatch = trimmed.match(/^[-*]\s+(.*)$/);
+        if (ulMatch) {
+          if (inOl) { html += '</ol>'; inOl = false; }
+          if (!inUl) { html += '<ul>'; inUl = true; }
+          html += `<li>${formatInline(ulMatch[1])}</li>`;
+          continue;
+        }
+
+        // Ordered Lists (1. item, 2. item)
+        const olMatch = trimmed.match(/^\d+\.\s+(.*)$/);
+        if (olMatch) {
+          if (inUl) { html += '</ul>'; inUl = false; }
+          if (!inOl) { html += '<ol>'; inOl = true; }
+          html += `<li>${formatInline(olMatch[1])}</li>`;
+          continue;
+        }
+
+        // Regular paragraph / text
+        closeLists();
+        html += `<p class="my-1 text-[#CDD6F4]">${formatInline(trimmed)}</p>`;
+      }
+
+      closeLists();
+      closeBlockquote();
+      return html;
+    }
+
+    // -------------------------------------------------------------
+    // MESSAGE WINDOW INTERACTION (CLICK / TAP TO OPEN BOTTOM DRAWER)
+    // -------------------------------------------------------------
+    function handleMessageWindowClick(event) {
+      // Ignore clicks on buttons, links, or inputs if present
+      if (event && event.target && event.target.closest('button, a, input, select, textarea')) {
+        return;
+      }
+      // If desktop full view height mode is active, restore standard split
+      if (isFullViewMode) {
+        toggleFullViewHeight(false);
+      }
+      // Automatically open bottom drawer (Pane 3) if not open
+      if (!isPane3Visible) {
+        togglePane3(true);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // MESSAGE WINDOW RENDERING (PANE 1)
+    // -------------------------------------------------------------
+    function renderActiveMessageWindow() {
+      const box = document.getElementById('message-display-box');
+      box.innerHTML = '';
+      const conv = getActiveConversation();
+
+      // Check if conversation has markdown content
+      if (conv.markdown && conv.markdown.trim().length > 0) {
+        const mdContainer = document.createElement('div');
+        mdContainer.className = 'md-render-content w-full flex flex-col gap-1 text-base leading-relaxed animate-fadeIn';
+        mdContainer.innerHTML = renderMarkdownToHtml(conv.markdown);
+
+        // If chips were appended on top of markdown
+        if (conv.chips && conv.chips.length > 0) {
+          const appendedRow = document.createElement('div');
+          appendedRow.className = 'mt-3 pt-3 border-t border-[#313244] flex flex-wrap items-center gap-2';
+          conv.chips.forEach(chip => {
+            const span = document.createElement('span');
+            span.className = 'word-chip px-3 py-1 rounded-xl border text-lg font-bold';
+            span.style.borderColor = chip.color + '66';
+            span.style.backgroundColor = chip.color + '26';
+            span.style.color = chip.color;
+            span.innerText = chip.text;
+            appendedRow.appendChild(span);
+          });
+          mdContainer.appendChild(appendedRow);
+        }
+
+        box.appendChild(mdContainer);
+        box.scrollTop = box.scrollHeight;
+        return;
+      }
+
+      // Standard Word Chips Mode
+      if (!conv.chips || conv.chips.length === 0) {
+        box.innerHTML = `
+          <div class="w-full h-full flex flex-col items-center justify-center text-center gap-2 text-[#A6ADC8]/40 select-none py-6">
+            <span class="text-3xl opacity-60">⌨️</span>
+            <div class="text-base font-normal italic">
+              Tap here to open keyboard, or select words from Core &amp; Activity...
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      conv.chips.forEach((chip) => {
+        const span = document.createElement('span');
+        span.className = 'word-chip px-3.5 py-1.5 rounded-xl border text-xl font-bold transition duration-200 animate-fadeIn';
+        span.style.borderColor = chip.color + '66';
+        span.style.backgroundColor = chip.color + '26';
+        span.style.color = chip.color;
+        span.innerText = chip.text;
+        box.appendChild(span);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function appendChip(word, color) {
+      const conv = getActiveConversation();
+      if (!conv.chips) conv.chips = [];
+      conv.chips.push({ text: word, color: color });
+      renderActiveMessageWindow();
+      renderConversationsList();
+    }
+
+    function typeChar(char) {
+      const conv = getActiveConversation();
+      if (!conv.chips) conv.chips = [];
+      const last = conv.chips[conv.chips.length - 1];
+
+      if (last && last.isTyped && char !== ' ') {
+        last.text += char;
+      } else {
+        conv.chips.push({
+          text: char === ' ' ? '' : char,
+          color: '#89B4FA',
+          isTyped: true
+        });
+      }
+      renderActiveMessageWindow();
+      renderConversationsList();
+    }
+
+    function backspaceWord() {
+      const conv = getActiveConversation();
+      if (conv.chips && conv.chips.length > 0) {
+        conv.chips.pop();
+      } else if (conv.markdown) {
+        // If clear backspace in markdown mode
+        conv.markdown = '';
+      }
+      renderActiveMessageWindow();
+      renderConversationsList();
+    }
+
+    function clearCurrentConversation() {
+      const conv = getActiveConversation();
+      conv.chips = [];
+      conv.markdown = '';
+      renderActiveMessageWindow();
+      renderConversationsList();
+    }
+
+    function speakActiveMessage() {
+      const conv = getActiveConversation();
+      let phrase = '';
+
+      if (conv.markdown && conv.markdown.trim().length > 0) {
+        // Clean markdown punctuation and syntax for natural TTS speech
+        phrase = conv.markdown
+          .replace(/[#*`_>~]/g, '')
+          .replace(/[-*]\s+/g, '')
+          .replace(/\d+\.\s+/g, '')
+          .trim();
+        if (conv.chips && conv.chips.length > 0) {
+          phrase += ' ' + conv.chips.map(c => c.text).filter(t => t.trim().length > 0).join(' ');
+        }
+      } else if (conv.chips && conv.chips.length > 0) {
+        phrase = conv.chips.map(c => c.text).filter(t => t.trim().length > 0).join(' ');
+      }
+
+      if (phrase.trim().length > 0) {
+        speakDirect(phrase);
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        historyLog.unshift({ text: phrase, time: timeStr });
+        renderHistoryLog();
+      }
+    }
+
+    function speakDirect(phrase) {
+      if (window.speechSynthesis && phrase) {
+        const u = new SpeechSynthesisUtterance(phrase);
+        u.rate = parseFloat(document.getElementById('rate-slider')?.value || '1.0');
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // SPOKEN HISTORY LOG (IN CONVERSATIONS TAB)
+    // -------------------------------------------------------------
+    function renderHistoryLog() {
+      const list = document.getElementById('history-log-list');
+      list.innerHTML = '';
+
+      if (historyLog.length === 0) {
+        list.innerHTML = '<div class="text-xs text-[#A6ADC8]/50 italic p-2">No spoken utterances yet.</div>';
+        return;
+      }
+
+      historyLog.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'p-2.5 rounded-xl bg-[#1E1E2E] border border-[#313244] hover:bg-[#252538] flex items-center justify-between transition gap-2';
+        row.innerHTML = `
+          <div class="flex-1 overflow-hidden cursor-pointer" onclick="loadHistoryToMessage('${item.text.replace(/'/g, "\\'")}')">
+            <div class="text-xs font-semibold text-[#CDD6F4] truncate">"${item.text}"</div>
+            <div class="text-[10px] text-[#A6ADC8]">${item.time}</div>
+          </div>
+          <button onclick="speakDirect('${item.text.replace(/'/g, "\\'")}')" class="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#89B4FA]/20 text-[#89B4FA] hover:bg-[#89B4FA]/30 text-sm font-bold flex items-center justify-center shrink-0 transition active:scale-95" title="Replay utterance">
+            <span>🔊</span>
+          </button>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function loadHistoryToMessage(text) {
+      const conv = getActiveConversation();
+      text.split(' ').forEach(w => {
+        conv.chips.push({ text: w, color: '#89B4FA' });
+      });
+      renderActiveMessageWindow();
+      renderConversationsList();
+    }
+
+    function clearHistoryLog() {
+      historyLog = [];
+      renderHistoryLog();
+    }
+
+    // -------------------------------------------------------------
+    // PANE 2 TAB SWITCHER (Activity, Conversations)
+    // -------------------------------------------------------------
+    function switchPane2Tab(tabId) {
+      document.querySelectorAll('.pane2-content-view').forEach(el => el.classList.add('hidden'));
+      ['activity', 'conversations'].forEach(t => {
+        const btn = document.getElementById('pane2-tab-' + t);
+        btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+        btn.classList.add('text-[#A6ADC8]');
+      });
+
+      const target = document.getElementById('pane2-view-' + tabId);
+      if (target) target.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('pane2-tab-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-[#A6ADC8]');
+        activeBtn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // PANE 2 & PANE 3 TOGGLE CONTROLS (Desktop Split & Mobile Off-Screen Drawers)
+    // -------------------------------------------------------------
+    function isMobileMode() {
+      return window.innerWidth <= 960;
+    }
+
+    function togglePane2(forceState = null) {
+      const p1 = document.getElementById('pane-1');
+      const p2 = document.getElementById('pane-2');
+      const btn = document.getElementById('toggle-pane2-btn');
+      const indicator = document.getElementById('pane2-indicator');
+      const badge = document.getElementById('pane1-width-badge');
+      const backdrop = document.getElementById('drawer-backdrop');
+
+      if (forceState !== null) {
+        isPane2Visible = forceState;
+      } else {
+        isPane2Visible = !isPane2Visible;
+      }
+
+      if (isMobileMode()) {
+        // Mobile / Small Screen: Off-screen RIGHT drawer (+100% translateX)
+        if (isPane2Visible) {
+          // Close Pane 3 drawer if open to keep UI clean
+          if (isPane3Visible) togglePane3(false);
+
+          p2.classList.add('mobile-open');
+          p2.classList.remove('hidden');
+          backdrop.classList.remove('hidden');
+          if (btn) {
+            btn.classList.remove('bg-[#313244]', 'text-[#CDD6F4]');
+            btn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+          }
+          if (indicator) indicator.innerText = '◀';
+        } else {
+          p2.classList.remove('mobile-open');
+          if (!isPane3Visible) backdrop.classList.add('hidden');
+          if (btn) {
+            btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+            btn.classList.add('bg-[#313244]', 'text-[#CDD6F4]');
+          }
+          if (indicator) indicator.innerText = '▶';
+        }
+      } else {
+        // Desktop Mode: 70% / 30% Width Split
+        backdrop.classList.add('hidden');
+        p2.classList.remove('mobile-open');
+
+        if (isPane2Visible) {
+          p2.classList.remove('w-0', 'p-0', 'border-0', 'hidden');
+          p2.classList.add('w-[30%]', 'p-4');
+          p1.classList.remove('w-full');
+          p1.classList.add('w-[70%]');
+
+          if (btn) {
+            btn.classList.remove('bg-[#313244]', 'text-[#CDD6F4]');
+            btn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+          }
+          if (indicator) indicator.innerText = '◀';
+          if (badge) badge.innerText = '70% Width';
+        } else {
+          p2.classList.remove('w-[30%]', 'p-4');
+          p2.classList.add('w-0', 'p-0', 'border-0', 'hidden');
+          p1.classList.remove('w-[70%]');
+          p1.classList.add('w-full');
+
+          if (btn) {
+            btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+            btn.classList.add('bg-[#313244]', 'text-[#CDD6F4]');
+          }
+          if (indicator) indicator.innerText = '▶';
+          if (badge) badge.innerText = '100% Full Width';
+        }
+      }
+    }
+
+    function togglePane3(forceState = null) {
+      const p3 = document.getElementById('pane-3');
+      const btn = document.getElementById('toggle-pane3-btn');
+      const indicator = document.getElementById('pane3-indicator');
+      const backdrop = document.getElementById('drawer-backdrop');
+
+      if (forceState !== null) {
+        isPane3Visible = forceState;
+      } else {
+        isPane3Visible = !isPane3Visible;
+      }
+
+      if (isMobileMode()) {
+        // Mobile / Small Screen: Off-screen BOTTOM drawer (+100% translateY)
+        if (isPane3Visible) {
+          // Close Pane 2 drawer if open
+          if (isPane2Visible) togglePane2(false);
+
+          p3.classList.add('mobile-open');
+          p3.classList.remove('hidden');
+          backdrop.classList.remove('hidden');
+          if (btn) {
+            btn.classList.remove('bg-[#313244]', 'text-[#CDD6F4]');
+            btn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+          }
+          if (indicator) indicator.innerText = '▼';
+        } else {
+          p3.classList.remove('mobile-open');
+          if (!isPane2Visible) backdrop.classList.add('hidden');
+          if (btn) {
+            btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+            btn.classList.add('bg-[#313244]', 'text-[#CDD6F4]');
+          }
+          if (indicator) indicator.innerText = '▲';
+        }
+      } else {
+        // Desktop Mode: Docked at bottom (30% Height)
+        backdrop.classList.add('hidden');
+        p3.classList.remove('mobile-open');
+
+        if (isPane3Visible) {
+          p3.classList.remove('h-0', 'p-0', 'border-0', 'hidden', 'mt-0');
+          p3.classList.add('h-[30%]', 'p-3', 'mt-2.5');
+
+          if (btn) {
+            btn.classList.remove('bg-[#313244]', 'text-[#CDD6F4]');
+            btn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+          }
+          if (indicator) indicator.innerText = '▼';
+        } else {
+          p3.classList.remove('h-[30%]', 'p-3', 'mt-2.5');
+          p3.classList.add('h-0', 'p-0', 'border-0', 'hidden', 'mt-0');
+
+          if (btn) {
+            btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+            btn.classList.add('bg-[#313244]', 'text-[#CDD6F4]');
+          }
+          if (indicator) indicator.innerText = '▲';
+        }
+      }
+    }
+
+    function closeAllDrawers() {
+      if (isMobileMode()) {
+        if (isPane2Visible) togglePane2(false);
+        if (isPane3Visible) togglePane3(false);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // FULL VIEW HEIGHT (100% VIEW HEIGHT) TOGGLE
+    // -------------------------------------------------------------
+    let isFullViewMode = false;
+    function toggleFullViewHeight(forceState = null) {
+      if (forceState !== null) {
+        isFullViewMode = forceState;
+      } else {
+        isFullViewMode = !isFullViewMode;
+      }
+      const icon = document.getElementById('fullview-toggle-icon');
+      const text = document.getElementById('fullview-toggle-text');
+      const btn = document.getElementById('fullview-toggle-btn');
+      if (isFullViewMode) {
+        document.body.classList.add('full-view-mode');
+        if (icon) icon.innerText = '🗗';
+        if (text) text.innerText = 'Restore';
+        if (btn) {
+          btn.classList.remove('bg-[#252538]', 'text-[#CDD6F4]');
+          btn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+        }
+      } else {
+        document.body.classList.remove('full-view-mode');
+        if (icon) icon.innerText = '⛶';
+        if (text) text.innerText = '100% Height';
+        if (btn) {
+          btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+          btn.classList.add('bg-[#252538]', 'text-[#CDD6F4]');
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // SCREEN FLIP (180° PARTNER READING MODE)
+    // -------------------------------------------------------------
+    let isScreenFlipped = false;
+    function toggleScreenFlip(forceState = null) {
+      if (forceState !== null) {
+        isScreenFlipped = forceState;
+      } else {
+        isScreenFlipped = !isScreenFlipped;
+      }
+      const box = document.getElementById('message-display-box');
+      const btn = document.getElementById('screen-flip-btn');
+      const icon = document.getElementById('screen-flip-icon');
+      const text = document.getElementById('screen-flip-text');
+      const settingCheckbox = document.getElementById('setting-toggle-screenflip');
+
+      if (isScreenFlipped) {
+        if (box) box.classList.add('screen-flipped');
+        if (btn) {
+          btn.classList.remove('bg-[#252538]', 'text-[#CDD6F4]');
+          btn.classList.add('bg-[#89B4FA]', 'text-[#11111B]');
+        }
+        if (text) text.innerText = 'Flipped';
+        if (settingCheckbox) settingCheckbox.checked = true;
+        showPartnerFlipIndicator(true);
+      } else {
+        if (box) box.classList.remove('screen-flipped');
+        if (btn) {
+          btn.classList.remove('bg-[#89B4FA]', 'text-[#11111B]');
+          btn.classList.add('bg-[#252538]', 'text-[#CDD6F4]');
+        }
+        if (text) text.innerText = 'Flip';
+        if (settingCheckbox) settingCheckbox.checked = false;
+        showPartnerFlipIndicator(false);
+      }
+    }
+
+    function showPartnerFlipIndicator(show) {
+      let badge = document.getElementById('partner-flip-badge');
+      if (show) {
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.id = 'partner-flip-badge';
+          badge.className = 'absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1 bg-[#89B4FA] text-[#11111B] text-[11px] font-black rounded-full shadow-lg border border-[#B4BEFE] flex items-center gap-1.5 pointer-events-none transition animate-fadeIn';
+          badge.innerHTML = '<span>🔄</span> <span>Partner Reading Mode (180°)</span>';
+          const container = document.getElementById('message-display-box')?.parentElement;
+          if (container) container.appendChild(badge);
+        }
+        badge.classList.remove('hidden');
+      } else {
+        if (badge) badge.classList.add('hidden');
+      }
+    }
+
+    // Toggle Pane 1 bottom status bar visibility from Settings Modal
+    function toggleStatusBarSetting(show) {
+      const statusBar = document.getElementById('pane1-bottom-status');
+      if (statusBar) {
+        if (show) {
+          statusBar.classList.remove('hidden');
+        } else {
+          statusBar.classList.add('hidden');
+        }
+      }
+    }
+
+    // -------------------------------------------------------------
+    // LIGHT / DARK THEME MANAGER
+    // -------------------------------------------------------------
+    function setThemeMode(theme) {
+      currentTheme = theme;
+      const themeBtnIcon = document.getElementById('theme-toggle-icon');
+      const mobileThemeBtnIcon = document.getElementById('mobile-theme-toggle-icon');
+      const modalBadgeIcon = document.getElementById('theme-modal-badge-icon');
+      const modalBadgeText = document.getElementById('theme-modal-badge-text');
+
+      if (theme === 'light') {
+        document.body.classList.add('light-theme');
+        if (themeBtnIcon) themeBtnIcon.innerText = '🌙';
+        if (mobileThemeBtnIcon) mobileThemeBtnIcon.innerText = '🌙';
+        if (modalBadgeIcon) modalBadgeIcon.innerText = '🌙';
+        if (modalBadgeText) modalBadgeText.innerText = 'Dark Mode';
+      } else {
+        document.body.classList.remove('light-theme');
+        if (themeBtnIcon) themeBtnIcon.innerText = '☀️';
+        if (mobileThemeBtnIcon) mobileThemeBtnIcon.innerText = '☀️';
+        if (modalBadgeIcon) modalBadgeIcon.innerText = '☀️';
+        if (modalBadgeText) modalBadgeText.innerText = 'Light Mode';
+      }
+
+      // Update theme option buttons in settings modal
+      document.querySelectorAll('.theme-option-card').forEach(card => {
+        const cardTheme = card.getAttribute('data-theme');
+        if (cardTheme === theme) {
+          card.className = 'theme-option-card flex flex-col items-center justify-center p-3 rounded-xl border border-[#89B4FA] bg-[#89B4FA]/15 ring-1 ring-[#89B4FA] min-h-[48px] transition active:scale-95 text-center shadow-sm';
+        } else {
+          card.className = 'theme-option-card flex flex-col items-center justify-center p-3 rounded-xl border border-[#313244] bg-[#11111B] min-h-[48px] transition active:scale-95 text-center shadow-sm';
+        }
+      });
+    }
+
+    function toggleTheme() {
+      setThemeMode(currentTheme === 'dark' ? 'light' : 'dark');
+    }
+
+    // -------------------------------------------------------------
+    // BUTTON DISPLAY MODE (SYMBOL ONLY | SYMBOL + LABEL | LABEL ONLY)
+    // -------------------------------------------------------------
+    function setButtonDisplayMode(mode) {
+      currentButtonDisplayMode = mode;
+      document.body.setAttribute('data-button-display', mode);
+
+      // Update active styling on the 3 option cards in Settings Modal
+      document.querySelectorAll('.btn-display-option-card').forEach(card => {
+        const cardMode = card.getAttribute('data-btn-mode');
+        if (cardMode === mode) {
+          card.className = 'btn-display-option-card flex flex-col items-center justify-center p-2.5 rounded-xl border border-[#89B4FA] bg-[#89B4FA]/15 ring-1 ring-[#89B4FA] min-h-[52px] transition active:scale-95 text-center shadow-sm';
+        } else {
+          card.className = 'btn-display-option-card flex flex-col items-center justify-center p-2.5 rounded-xl border border-[#313244] bg-[#11111B] hover:border-[#89B4FA]/60 min-h-[52px] transition active:scale-95 text-center';
+        }
+      });
+    }
+
+    // Auto-adjust layout on window resize between desktop and small screen modes
+    window.addEventListener('resize', () => {
+      const btn2 = document.getElementById('toggle-pane2-btn');
+      const btn3 = document.getElementById('toggle-pane3-btn');
+      const ind2 = document.getElementById('pane2-indicator');
+      const ind3 = document.getElementById('pane3-indicator');
+
+      if (isMobileMode()) {
+        // On small screen initialization or resize, default Pane 2 & 3 off-screen
+        isPane2Visible = false;
+        isPane3Visible = false;
+        document.getElementById('pane-2').classList.remove('mobile-open');
+        document.getElementById('pane-3').classList.remove('mobile-open');
+        document.getElementById('drawer-backdrop').classList.add('hidden');
+        if (btn2) {
+          btn2.classList.replace('bg-[#89B4FA]', 'bg-[#313244]');
+          btn2.classList.replace('text-[#11111B]', 'text-[#CDD6F4]');
+        }
+        if (btn3) {
+          btn3.classList.replace('bg-[#89B4FA]', 'bg-[#313244]');
+          btn3.classList.replace('text-[#11111B]', 'text-[#CDD6F4]');
+        }
+        if (ind2) ind2.innerText = '▶';
+        if (ind3) ind3.innerText = '▲';
+      } else {
+        // On desktop, restore standard split layout
+        document.getElementById('drawer-backdrop').classList.add('hidden');
+        document.getElementById('pane-2').classList.remove('mobile-open');
+        document.getElementById('pane-3').classList.remove('mobile-open');
+        isPane2Visible = true;
+        isPane3Visible = true;
+        const p1 = document.getElementById('pane-1');
+        const p2 = document.getElementById('pane-2');
+        const p3 = document.getElementById('pane-3');
+        p1.classList.remove('w-full');
+        p1.classList.add('w-[70%]');
+        p2.classList.remove('w-0', 'p-0', 'border-0', 'hidden');
+        p2.classList.add('w-[30%]', 'p-4');
+        p3.classList.remove('h-0', 'p-0', 'border-0', 'hidden', 'mt-0');
+        p3.classList.add('h-[30%]', 'p-3', 'mt-2.5');
+        if (btn2) {
+          btn2.classList.replace('bg-[#313244]', 'bg-[#89B4FA]');
+          btn2.classList.replace('text-[#CDD6F4]', 'text-[#11111B]');
+        }
+        if (btn3) {
+          btn3.classList.replace('bg-[#313244]', 'bg-[#89B4FA]');
+          btn3.classList.replace('text-[#CDD6F4]', 'text-[#11111B]');
+        }
+        if (ind2) ind2.innerText = '◀';
+        if (ind3) ind3.innerText = '▼';
+        const badge = document.getElementById('pane1-width-badge');
+        if (badge) badge.innerText = '70% Width';
+      }
+    });
+
+    function updateRate(v) {
+      document.getElementById('rate-label').innerText = v + 'x';
+    }
+
+    // Modal Controls
+    function openSettingsModal(defaultTab = 'voice') {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.remove('hidden');
+      switchModalTab(defaultTab);
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    function switchModalTab(tabId) {
+      document.querySelectorAll('.modal-tab-view').forEach(el => el.classList.add('hidden'));
+      document.getElementById('modal-tab-telemetry').classList.remove('bg-[#89B4FA]', 'text-[#11111B]', 'shadow');
+      document.getElementById('modal-tab-telemetry').classList.add('text-[#A6ADC8]');
+      document.getElementById('modal-tab-voice').classList.remove('bg-[#89B4FA]', 'text-[#11111B]', 'shadow');
+      document.getElementById('modal-tab-voice').classList.add('text-[#A6ADC8]');
+
+      const activeView = document.getElementById('modal-content-' + tabId);
+      if (activeView) activeView.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('modal-tab-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-[#A6ADC8]');
+        activeBtn.classList.add('bg-[#89B4FA]', 'text-[#11111B]', 'shadow');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CORE BOARD DYNAMIC RENDERING & BUILDER
+    // -------------------------------------------------------------
+    function renderCoreBoard() {
+      const container = document.getElementById('core-categories-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      coreCategories.forEach(cat => {
+        const catCol = document.createElement('div');
+        catCol.className = 'flex-1 min-w-[190px] bg-[#181825] border border-[#313244] rounded-2xl p-2.5 flex flex-col gap-2 shrink-0';
+        
+        // Category Header
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between pb-1.5 border-b border-[#313244]/40';
+        header.innerHTML = `
+          <span class="text-xs font-bold uppercase tracking-wider" style="color: ${cat.color}">${cat.name}</span>
+          <span class="text-[10px] text-[#A6ADC8]/70 font-semibold">${cat.items.length} tiles</span>
+        `;
+        catCol.appendChild(header);
+
+        // Tiles Grid
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-2 gap-1.5 flex-1 overflow-y-auto custom-scrollbar';
+        
+        cat.items.forEach(item => {
+          const btn = document.createElement('button');
+          btn.className = 'aac-tile-btn btn-display-adaptive tile-active min-h-[48px] p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition active:scale-95';
+          btn.style.backgroundColor = cat.color + '1f';
+          btn.style.borderColor = cat.color + '4d';
+          btn.style.color = cat.color;
+          btn.onclick = () => appendChip(item.text, cat.color);
+          btn.innerHTML = `
+            <span class="btn-label truncate">${item.text}</span>
+            <span class="btn-symbol text-base shrink-0">${item.icon || '💬'}</span>
+          `;
+          grid.appendChild(btn);
+        });
+
+        catCol.appendChild(grid);
+        container.appendChild(catCol);
+      });
+    }
+
+    // Modal: Add Core Category
+    function openAddCoreCategoryModal() {
+      document.getElementById('new-core-cat-name').value = '';
+      document.getElementById('add-core-category-modal').classList.remove('hidden');
+    }
+
+    function closeAddCoreCategoryModal() {
+      document.getElementById('add-core-category-modal').classList.add('hidden');
+    }
+
+    function saveNewCoreCategory() {
+      const nameInput = document.getElementById('new-core-cat-name');
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert('Please enter a category name.');
+        return;
+      }
+
+      const selectedColorRadio = document.querySelector('input[name="core-cat-color"]:checked');
+      const color = selectedColorRadio ? selectedColorRadio.value : '#89B4FA';
+
+      const newId = 'cat-' + Date.now();
+      coreCategories.push({
+        id: newId,
+        name: name,
+        color: color,
+        items: []
+      });
+
+      renderCoreBoard();
+      closeAddCoreCategoryModal();
+    }
+
+    // Modal: Add Core Item (Tile)
+    function openAddCoreItemModal() {
+      const select = document.getElementById('new-core-item-cat-select');
+      select.innerHTML = '';
+      coreCategories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.innerText = `${cat.name} (${cat.items.length} tiles)`;
+        select.appendChild(opt);
+      });
+
+      document.getElementById('new-core-item-text').value = '';
+      document.getElementById('new-core-item-icon').value = '✨';
+      document.getElementById('add-core-item-modal').classList.remove('hidden');
+    }
+
+    function closeAddCoreItemModal() {
+      document.getElementById('add-core-item-modal').classList.add('hidden');
+    }
+
+    function saveNewCoreItem() {
+      const catId = document.getElementById('new-core-item-cat-select').value;
+      const text = document.getElementById('new-core-item-text').value.trim();
+      const icon = document.getElementById('new-core-item-icon').value.trim() || '💬';
+
+      if (!text) {
+        alert('Please enter a word or label for the tile.');
+        return;
+      }
+
+      const cat = coreCategories.find(c => c.id === catId);
+      if (cat) {
+        cat.items.push({ text, icon });
+        renderCoreBoard();
+        closeAddCoreItemModal();
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // ACTIVITY DECKS DYNAMIC RENDERING & BUILDER
+    // -------------------------------------------------------------
+    function renderActivityDecks() {
+      const container = document.getElementById('activity-decks-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      activityDecks.forEach(deck => {
+        const card = document.createElement('div');
+        card.className = 'bg-[#181825] p-3 rounded-xl border border-[#313244] flex flex-col gap-2';
+
+        // Deck Title Header
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between pb-1 border-b border-[#313244]/40';
+        header.innerHTML = `
+          <div>
+            <span class="text-xs font-bold text-[#CDD6F4] block">${deck.title}</span>
+            <span class="text-[10px] text-[#A6ADC8]">${deck.subtitle}</span>
+          </div>
+          <span class="text-[9px] text-[#89B4FA] bg-[#89B4FA]/10 border border-[#89B4FA]/20 px-2 py-0.5 rounded-full font-bold">
+            ${deck.items.length} items
+          </span>
+        `;
+        card.appendChild(header);
+
+        // Deck Items Container
+        if (deck.layout === 'grid3') {
+          // 3-column pain scale format
+          const grid = document.createElement('div');
+          grid.className = 'grid grid-cols-3 gap-1.5';
+          deck.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = `aac-tile-btn btn-display-adaptive tile-active min-h-[48px] p-2 rounded-xl border text-center transition active:scale-95 ${item.colSpan === 2 ? 'col-span-2' : ''}`;
+            btn.style.backgroundColor = item.color + '26';
+            btn.style.borderColor = item.color + '59';
+            btn.onclick = () => appendChip(item.text, item.color);
+            btn.innerHTML = `
+              <div class="btn-symbol text-lg">${item.icon}</div>
+              <div class="btn-label text-[10px] font-bold" style="color: ${item.color}">${item.sub || item.text}</div>
+            `;
+            grid.appendChild(btn);
+          });
+          card.appendChild(grid);
+        } else if (deck.layout === 'grid2' || deck.layout === 'grid') {
+          // 2-column grid
+          const grid = document.createElement('div');
+          grid.className = 'grid grid-cols-2 gap-1.5';
+          deck.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'aac-tile-btn btn-display-adaptive tile-active min-h-[48px] p-2.5 bg-[#252538] hover:bg-[#313244] rounded-xl text-xs font-semibold text-left transition active:scale-95 flex items-center gap-2';
+            btn.onclick = () => appendChip(item.text, item.color || '#CDD6F4');
+            btn.innerHTML = `<span class="btn-symbol text-base shrink-0">${item.icon || '💬'}</span> <span class="btn-label truncate">${item.text}</span>`;
+            grid.appendChild(btn);
+          });
+          card.appendChild(grid);
+        } else {
+          // Vertical list
+          const list = document.createElement('div');
+          list.className = 'flex flex-col gap-1.5';
+          deck.items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'aac-tile-btn btn-display-adaptive tile-active min-h-[48px] p-2.5 bg-[#252538] hover:bg-[#313244] rounded-xl text-xs font-semibold text-left transition active:scale-95 flex items-center gap-2.5';
+            btn.onclick = () => appendChip(item.text, item.color || '#CDD6F4');
+            btn.innerHTML = `<span class="btn-symbol text-base shrink-0">${item.icon || '💬'}</span> <span class="btn-label truncate">${item.text}</span>`;
+            list.appendChild(btn);
+          });
+          card.appendChild(list);
+        }
+
+        container.appendChild(card);
+      });
+    }
+
+    // Modal: Add Activity Deck
+    function openAddActivityDeckModal() {
+      document.getElementById('new-activity-deck-title').value = '';
+      document.getElementById('new-activity-deck-subtitle').value = '';
+      document.getElementById('add-activity-deck-modal').classList.remove('hidden');
+    }
+
+    function closeAddActivityDeckModal() {
+      document.getElementById('add-activity-deck-modal').classList.add('hidden');
+    }
+
+    function saveNewActivityDeck() {
+      const title = document.getElementById('new-activity-deck-title').value.trim();
+      const subtitle = document.getElementById('new-activity-deck-subtitle').value.trim() || 'Custom Activity Board';
+      const layoutRadio = document.querySelector('input[name="deck-layout-type"]:checked');
+      const layout = layoutRadio ? layoutRadio.value : 'grid';
+
+      if (!title) {
+        alert('Please enter an activity deck title.');
+        return;
+      }
+
+      activityDecks.push({
+        id: 'deck-' + Date.now(),
+        title: title,
+        subtitle: subtitle,
+        layout: layout,
+        items: []
+      });
+
+      renderActivityDecks();
+      closeAddActivityDeckModal();
+    }
+
+    // Modal: Add Activity Item
+    function openAddActivityItemModal() {
+      const select = document.getElementById('new-activity-item-deck-select');
+      select.innerHTML = '';
+      activityDecks.forEach(deck => {
+        const opt = document.createElement('option');
+        opt.value = deck.id;
+        opt.innerText = `${deck.title} (${deck.items.length} items)`;
+        select.appendChild(opt);
+      });
+
+      document.getElementById('new-activity-item-text').value = '';
+      document.getElementById('new-activity-item-icon').value = '💬';
+      document.getElementById('add-activity-item-modal').classList.remove('hidden');
+    }
+
+    function closeAddActivityItemModal() {
+      document.getElementById('add-activity-item-modal').classList.add('hidden');
+    }
+
+    function saveNewActivityItem() {
+      const deckId = document.getElementById('new-activity-item-deck-select').value;
+      const text = document.getElementById('new-activity-item-text').value.trim();
+      const icon = document.getElementById('new-activity-item-icon').value.trim() || '💬';
+      const colorRadio = document.querySelector('input[name="activity-item-color"]:checked');
+      const color = colorRadio ? colorRadio.value : '#89B4FA';
+
+      if (!text) {
+        alert('Please enter a phrase or label.');
+        return;
+      }
+
+      const deck = activityDecks.find(d => d.id === deckId);
+      if (deck) {
+        deck.items.push({ text, icon, color });
+        renderActivityDecks();
+        closeAddActivityItemModal();
+      }
+    }
+
+
+    // -------------------------------------------------------------
+    // HOTKEYS & MODAL ESCAPE HANDLER
+    // -------------------------------------------------------------
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeConvDropdown();
+        closeCoreCogDropdown();
+        closeSettingsModal();
+        closeAddCoreCategoryModal();
+        closeAddCoreItemModal();
+        closeAddActivityDeckModal();
+        closeAddActivityItemModal();
+        closeAddConversationModal();
+        closeAllDrawers();
+        if (isFullViewMode) toggleFullViewHeight(false);
+        if (isScreenFlipped) toggleScreenFlip(false);
+      }
+      if ((e.altKey && e.key.toLowerCase() === 'f') && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        toggleScreenFlip();
+      }
+      if (e.key === 'Enter' && !e.target.matches('input, textarea, select')) {
+        speakActiveMessage();
+      }
+      if (e.key === 'Backspace' && !e.target.matches('input, textarea, select')) {
+        backspaceWord();
+      }
+    });
+
+    // Touch Swipe Detection (Left/Right for Pane 2 Drawer, Up/Down for Pane 3 Drawer)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    window.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', e => {
+      let diffX = e.changedTouches[0].screenX - touchStartX;
+      let diffY = e.changedTouches[0].screenY - touchStartY;
+
+      if (isMobileMode()) {
+        // Horizontal swipe: Swipe left opens Pane 2 from right; Swipe right closes Pane 2
+        if (diffX < -70 && !isPane2Visible) {
+          togglePane2(true);
+        } else if (diffX > 70 && isPane2Visible) {
+          togglePane2(false);
+        }
+        // Vertical swipe: Swipe up opens Pane 3 from bottom; Swipe down closes Pane 3
+        else if (diffY < -60 && !isPane3Visible) {
+          togglePane3(true);
+        } else if (diffY > 60 && isPane3Visible) {
+          togglePane3(false);
+        }
+      } else {
+        // Desktop Mode: Toggle triggers
+        if (Math.abs(diffX) > 100) {
+          togglePane2();
+        } else if (Math.abs(diffY) > 80) {
+          togglePane3();
+        }
+      }
+    }, { passive: true });
+  </script>
+  <!-- GestureFlow Hardware Telemetry & WPF IPC Integration -->
+  <script>
+    // Listen for GestureFlow WPF Host telemetry and gesture events
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.addEventListener('message', event => {
+        const msg = event.data;
+        if (!msg) return;
+
+        if (msg.type === 'GESTURE_RECOGNIZED' && msg.word) {
+          addWordToActiveMessage(msg.word);
+          if (msg.autoSpeak) speakCurrentText();
+        } else if (msg.type === 'PINCH_DETECTED') {
+          speakCurrentText();
+        } else if (msg.type === 'BLE_STATE_CHANGED') {
+          const bleStatus = document.getElementById('gf-ble-status');
+          const bleDot = document.getElementById('gf-ble-dot');
+          const blePing = document.getElementById('gf-ble-ping');
+          if (bleStatus) bleStatus.innerText = msg.connected ? (msg.device || 'Movesense Connected') : 'Movesense Disconnected';
+          if (bleDot) bleDot.className = msg.connected ? 'relative inline-flex rounded-full h-2.5 w-2.5 bg-[#A6E3A1]' : 'relative inline-flex rounded-full h-2.5 w-2.5 bg-[#F38BA8]';
+          if (blePing) blePing.className = msg.connected ? 'animate-ping absolute inline-flex h-full w-full rounded-full bg-[#A6E3A1] opacity-75' : 'hidden';
+        } else if (msg.type === 'VISION_STATE_CHANGED') {
+          const visionStatus = document.getElementById('gf-vision-status');
+          if (visionStatus) {
+            visionStatus.innerText = msg.active ? 'MediaPipe Active' : 'Camera Off';
+            visionStatus.className = msg.active ? 'text-[#A6E3A1] text-xs font-semibold' : 'text-[#BAC2DE] text-xs font-semibold';
+          }
+        }
+      });
+    }
+
+    // Notify GestureFlow Host when words or speech change
+    window.addEventListener('scooby:text-changed', (e) => {
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({
+          type: 'GESTUREFLOW_TEXT_CHANGED',
+          text: e.detail ? e.detail.text : ''
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>
