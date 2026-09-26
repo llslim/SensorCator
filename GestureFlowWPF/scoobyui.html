@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GestureFlow - Adaptive Gesture AAC (HerbieUI Core)</title>
+  <title>AllyAAC-Windows - Multi-Modal Gesture AAC</title>
   <script src="tailwindcss.min.js"></script>
   <style>
 body {
@@ -1005,7 +1005,7 @@ body {
       <div>
         <div class="flex items-center gap-2">
           <h1 class="app-name-bind text-lg font-black tracking-tight bg-gradient-to-r from-[#89B4FA] via-[#CBA6F7] to-[#F5C2E7] bg-clip-text text-transparent">
-            GestureFlow
+            AllyAAC-Windows
           </h1>
         </div>
       </div>
@@ -1062,7 +1062,7 @@ body {
           <div class="flex items-center gap-2">
             <!-- Mobile Brand Title (No Logo) -->
             <div class="flex md:hidden items-center mr-1">
-              <span class="app-name-bind text-xs font-black bg-gradient-to-r from-[#89B4FA] to-[#CBA6F7] bg-clip-text text-transparent">GestureFlow</span>
+              <span class="app-name-bind text-xs font-black bg-gradient-to-r from-[#89B4FA] to-[#CBA6F7] bg-clip-text text-transparent">AllyAAC-Windows</span>
             </div>
 
             <!-- Screen Flip Toggle (180° Partner Reading Mode, WCAG 2.2 Compliant min 44px) -->
@@ -2173,7 +2173,7 @@ body {
             ⚙️
           </div>
           <div>
-            <h3 id="settings-modal-app-title" class="text-base font-bold text-[#CDD6F4]"><span class="app-name-bind">GestureFlow</span> Settings &amp; Configuration</h3>
+            <h3 id="settings-modal-app-title" class="text-base font-bold text-[#CDD6F4]"><span class="app-name-bind">AllyAAC-Windows</span> Settings &amp; Configuration</h3>
             <p id="settings-modal-app-subtitle" class="text-xs text-[#A6ADC8]">Adaptive AAC • Speech Synthesis • Custom Profiles</p>
           </div>
         </div>
@@ -3594,8 +3594,8 @@ body {
     // -------------------------------------------------------------
     const urlParams = new URLSearchParams(window.location.search);
     window.SCOOBY_CONFIG = Object.assign({
-      appName: urlParams.get('app') || (window.SCOOBY_CONFIG && window.SCOOBY_CONFIG.appName) || "GestureFlow",
-      tagline: urlParams.get('tagline') || (window.SCOOBY_CONFIG && window.SCOOBY_CONFIG.tagline) || "Movesense 9-DoF BLE & MediaPipe Hand Tracking (HerbieUI Core)",
+      appName: urlParams.get('app') || (window.SCOOBY_CONFIG && window.SCOOBY_CONFIG.appName) || "AllyAAC-Windows",
+      tagline: urlParams.get('tagline') || (window.SCOOBY_CONFIG && window.SCOOBY_CONFIG.tagline) || "Movesense 9-DoF BLE & MediaPipe Hand Tracking (Multi-Modal AAC)",
       platform: "Desktop & Tablet • 1250×700"
     }, window.SCOOBY_CONFIG || {});
 
@@ -9558,19 +9558,19 @@ body {
     });
 
   </script>
-  <!-- GestureFlow Hardware Telemetry & WPF IPC Integration -->
+  <!-- Hardware Telemetry & WPF IPC Integration -->
   <script>
-    // Listen for GestureFlow WPF Host telemetry and gesture events
+    // Listen for Host telemetry and gesture events
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.addEventListener('message', event => {
         const msg = event.data;
         if (!msg) return;
 
         if (msg.type === 'GESTURE_RECOGNIZED' && msg.word) {
-          addWordToActiveMessage(msg.word);
-          if (msg.autoSpeak) speakCurrentText();
+          if (typeof addWordToActiveMessage === 'function') addWordToActiveMessage(msg.word);
+          if (msg.autoSpeak && typeof speakCurrentText === 'function') speakCurrentText();
         } else if (msg.type === 'PINCH_DETECTED') {
-          speakCurrentText();
+          if (typeof speakCurrentText === 'function') speakCurrentText();
         } else if (msg.type === 'BLE_STATE_CHANGED') {
           const bleStatus = document.getElementById('gf-ble-status');
           const bleDot = document.getElementById('gf-ble-dot');
@@ -9588,7 +9588,7 @@ body {
       });
     }
 
-    // Notify GestureFlow Host when words or speech change
+    // Notify Host when words or speech change
     window.addEventListener('scooby:text-changed', (e) => {
       if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage({
