@@ -100,7 +100,8 @@ To avoid high complexity at start-up, development is structured into 5 progressi
   * **IMU Gesture-Only Mode**: A toggleable state that bypasses the camera feed completely. This mode runs headless or in low-power mode, relying entirely on the wearable Movesense sensor's IMU data to recognize gestures when the user is away from the screen.
 
 ### Phase 4: AAC Display Screen & Text-to-Speech (TTS)
-* **Goal**: Provide an accessible, custom communication grid board.
+* **Goal**: Provide an accessible, message-first communication dashboard powered by the canonical **HerbieUI** design system (`D:\projects\windows\HerbieUI`).
+* **Canonical Design System**: Powered by **HerbieUI**, integrating a 3-tier Stage Rail (thought deck concurrency), Active Message Arena, Strategy Palette, 180° Partner Screen Flip, and non-verbal gesture telemetry.
 * **Features**:
   * **Speech Display Text Area**: An ongoing text window that holds the constructed message. Clicking the text area places the cursor, triggers the app's on-screen keyboard, and brings up the Activity list (card collection selector). The text area highlights each word in real-time as it is spoken by the text-to-speech engine.
   * **Control Actions**: Buttons for:
